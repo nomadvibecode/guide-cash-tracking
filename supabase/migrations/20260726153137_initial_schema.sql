@@ -25,6 +25,35 @@ create index tours_tour_guide_id_idx on public.tours (tour_guide_id);
 create index tours_status_idx on public.tours (status);
 create index tours_start_date_idx on public.tours (start_date);
 
+create table public.guide_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  display_name text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.guide_profiles is 'Public guide profile data for demo rendering.';
+
+alter table public.guide_profiles enable row level security;
+
+drop policy if exists "guide_profiles_public_select" on public.guide_profiles;
+create policy "guide_profiles_public_select"
+on public.guide_profiles
+for select
+to anon
+using (true);
+
+drop policy if exists "guide_profiles_authenticated_select" on public.guide_profiles;
+create policy "guide_profiles_authenticated_select"
+on public.guide_profiles
+for select
+to authenticated
+using (true);
+
+revoke all on table public.guide_profiles from anon, public;
+grant select on table public.guide_profiles to anon, authenticated;
+
 create table public.expense_reports (
   id uuid primary key default gen_random_uuid(),
   tour_id uuid not null references public.tours(id) on delete cascade,
@@ -71,6 +100,13 @@ for select
 to authenticated
 using (auth.uid() = tour_guide_id);
 
+drop policy if exists "tours_public_select" on public.tours;
+create policy "tours_public_select"
+on public.tours
+for select
+to anon
+using (true);
+
 drop policy if exists "tours_owner_insert" on public.tours;
 create policy "tours_owner_insert"
 on public.tours
@@ -80,6 +116,7 @@ with check (auth.uid() = tour_guide_id);
 
 drop policy if exists "tours_owner_update" on public.tours;
 revoke all on table public.tours from anon, public;
+grant select on table public.tours to anon;
 grant select, insert on table public.tours to authenticated;
 
 alter table public.expense_reports enable row level security;
@@ -90,6 +127,13 @@ on public.expense_reports
 for select
 to authenticated
 using (auth.uid() = guide_id);
+
+drop policy if exists "expense_reports_public_select" on public.expense_reports;
+create policy "expense_reports_public_select"
+on public.expense_reports
+for select
+to anon
+using (true);
 
 drop policy if exists "expense_reports_owner_insert" on public.expense_reports;
 create policy "expense_reports_owner_insert"
@@ -114,6 +158,7 @@ to authenticated
 using (auth.uid() = guide_id);
 
 revoke all on table public.expense_reports from anon, public;
+grant select on table public.expense_reports to anon;
 grant select, insert, update, delete on table public.expense_reports to authenticated;
 
 alter table public.expense_report_lines enable row level security;
@@ -131,6 +176,13 @@ using (
       and expense_reports.guide_id = auth.uid()
   )
 );
+
+drop policy if exists "expense_report_lines_public_select" on public.expense_report_lines;
+create policy "expense_report_lines_public_select"
+on public.expense_report_lines
+for select
+to anon
+using (true);
 
 drop policy if exists "expense_report_lines_owner_insert" on public.expense_report_lines;
 create policy "expense_report_lines_owner_insert"
@@ -183,4 +235,5 @@ using (
 );
 
 revoke all on table public.expense_report_lines from anon, public;
+grant select on table public.expense_report_lines to anon;
 grant select, insert, update, delete on table public.expense_report_lines to authenticated;

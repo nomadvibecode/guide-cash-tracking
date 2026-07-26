@@ -19,6 +19,11 @@ This is the simplified first-pass Supabase schema for Guide Cash Tracking.
   - `in_progress` = yellow
   - `finished` = green
 
+### Guide profiles
+- `id` -> `auth.users.id`
+- `email`
+- `display_name`
+
 ### Expense reports
 - `tour_id` -> `tours.id`
 - `guide_id` -> `auth.users.id`
@@ -43,6 +48,7 @@ This is the simplified first-pass Supabase schema for Guide Cash Tracking.
 ```mermaid
 erDiagram
   auth_users ||--o{ tours : guides
+  auth_users ||--o{ guide_profiles : profile
   tours ||--o{ expense_reports : contains
   auth_users ||--o{ expense_reports : submits
   expense_reports ||--o{ expense_report_lines : includes
@@ -59,6 +65,12 @@ erDiagram
     date end_date
     uuid tour_guide_id FK
     tour_status status
+  }
+
+  guide_profiles {
+    uuid id PK
+    text email
+    text display_name
   }
 
   expense_reports {
@@ -87,8 +99,11 @@ erDiagram
 - `tour_guides` can be added later if profile-specific data becomes necessary.
 - `updated_at` is included for future editing flows.
 - Owner-based RLS is enabled on `tours` and `expense_reports`.
-- Each guide can only see and add rows where the ownership column matches their `auth.uid()`.
-- Tours are read/add only for the owning guide.
-- Expense reports are read/add/update/delete only for the owning guide.
-- Expense report lines are read/add/update/delete only for the owning guide through the parent report.
+- For the browser demo, `anon` can read seeded `tours`, `expense_reports`, and `expense_report_lines`.
+- For the browser demo, `anon` can read `guide_profiles`.
+- Each guide can still only add or edit rows where the ownership column matches their `auth.uid()`.
+- Tours are public-read and add-only for the owning guide.
+- Expense reports are public-read and add/update/delete only for the owning guide.
+- Expense report lines are public-read and add/update/delete only for the owning guide through the parent report.
+- Guide profiles are public-read only for demo rendering.
 - Table access is limited to authenticated users.

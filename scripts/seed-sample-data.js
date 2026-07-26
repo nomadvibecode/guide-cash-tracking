@@ -42,6 +42,15 @@ function createReportMemo(userEmail, tourName) {
   return `Sample expense report for ${userEmail ?? 'guide'} on ${tourName}`;
 }
 
+function displayNameFromEmail(email) {
+  const localPart = (email ?? 'guide').split('@')[0];
+  return localPart
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function buildLine(reportDate, lineIndex) {
   const amount = Number((randomInt(1200, 8500) / 100).toFixed(2));
   const lineDate = new Date(reportDate);
@@ -117,6 +126,18 @@ async function getOrCreateTour(user, userIndex) {
   }
 
   return createdTour;
+}
+
+async function upsertGuideProfile(user) {
+  const { error } = await supabase.from('guide_profiles').upsert({
+    id: user.id,
+    email: user.email,
+    display_name: displayNameFromEmail(user.email),
+  });
+
+  if (error) {
+    throw error;
+  }
 }
 
 async function createExpenseReport(user, tour, userIndex) {
@@ -213,6 +234,7 @@ async function main() {
   }
 
   for (const [index, user] of users.entries()) {
+    await upsertGuideProfile(user);
     const tour = await getOrCreateTour(user, index);
     const report = await createExpenseReport(user, tour, index);
     await seedReportLines(report);

@@ -23,6 +23,16 @@ create index tours_tour_guide_id_idx on public.tours (tour_guide_id);
 create index tours_status_idx on public.tours (status);
 create index tours_start_date_idx on public.tours (start_date);
 
+create table public.guide_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  display_name text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.guide_profiles is 'Public guide profile data for demo rendering.';
+
 create table public.expense_reports (
   id uuid primary key default gen_random_uuid(),
   tour_id uuid not null references public.tours(id) on delete cascade,
@@ -62,6 +72,6 @@ create index expense_report_lines_line_date_idx on public.expense_report_lines (
 
 -- RLS is enabled in the migration file.
 -- Access is owner-based and limited to authenticated users.
--- Tours: read and add only.
--- Expense reports: read, add, edit, and delete only.
--- Expense report lines: read, add, edit, and delete only through their parent report.
+-- Tours: read publicly for demo usage, add only for the owning guide.
+-- Expense reports: read publicly for demo usage, add/edit/delete only for the owning guide.
+-- Expense report lines: read publicly for demo usage, add/edit/delete only through their parent report.
