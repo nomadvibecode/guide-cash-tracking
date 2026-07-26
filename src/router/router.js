@@ -4,8 +4,8 @@ import { renderDashboardPage } from '../pages/dashboard/dashboard.js';
 import { renderHomePage } from '../pages/home/home.js';
 import { renderLoginPage } from '../pages/login/login.js';
 import { renderNotFoundPage } from '../pages/not-found/not-found.js';
-import { renderProjectTasksPage } from '../pages/project-tasks/project-tasks.js';
-import { renderStructurePage } from '../pages/structure/structure.js';
+import { renderRunningBalancePage } from '../pages/running-balance/running-balance.js';
+import { renderToursPage } from '../pages/tours/tours.js';
 
 const routes = [
   {
@@ -24,14 +24,14 @@ const routes = [
     render: renderDashboardPage,
   },
   {
-    pattern: /^\/structure\/?$/,
-    title: 'Project Structure',
-    render: renderStructurePage,
+    pattern: /^\/tours\/?$/,
+    title: 'Tours',
+    render: renderToursPage,
   },
   {
-    pattern: /^\/projects\/([^/]+)\/tasks\/?$/,
-    title: ({ projectId }) => `Project ${projectId} Tasks`,
-    render: renderProjectTasksPage,
+    pattern: /^\/running-balance\/([^/]+)\/?$/,
+    title: ({ projectId }) => `Running Balance ${projectId}`,
+    render: renderRunningBalancePage,
   },
 ];
 
