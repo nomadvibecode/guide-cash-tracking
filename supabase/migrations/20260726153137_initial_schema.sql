@@ -46,6 +46,22 @@ create index expense_reports_guide_id_idx on public.expense_reports (guide_id);
 create index expense_reports_status_idx on public.expense_reports (status);
 create index expense_reports_transaction_date_idx on public.expense_reports (transaction_date);
 
+create table public.expense_report_lines (
+  id uuid primary key default gen_random_uuid(),
+  expense_report_id uuid not null references public.expense_reports(id) on delete cascade,
+  line_date date not null,
+  description text not null,
+  category text not null,
+  amount numeric(12,2) not null check (amount >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.expense_report_lines is 'Individual expense rows within an expense report.';
+
+create index expense_report_lines_expense_report_id_idx on public.expense_report_lines (expense_report_id);
+create index expense_report_lines_line_date_idx on public.expense_report_lines (line_date);
+
 alter table public.tours enable row level security;
 
 drop policy if exists "tours_owner_select" on public.tours;
@@ -99,3 +115,72 @@ using (auth.uid() = guide_id);
 
 revoke all on table public.expense_reports from anon, public;
 grant select, insert, update, delete on table public.expense_reports to authenticated;
+
+alter table public.expense_report_lines enable row level security;
+
+drop policy if exists "expense_report_lines_owner_select" on public.expense_report_lines;
+create policy "expense_report_lines_owner_select"
+on public.expense_report_lines
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.expense_reports
+    where expense_reports.id = expense_report_lines.expense_report_id
+      and expense_reports.guide_id = auth.uid()
+  )
+);
+
+drop policy if exists "expense_report_lines_owner_insert" on public.expense_report_lines;
+create policy "expense_report_lines_owner_insert"
+on public.expense_report_lines
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.expense_reports
+    where expense_reports.id = expense_report_lines.expense_report_id
+      and expense_reports.guide_id = auth.uid()
+  )
+);
+
+drop policy if exists "expense_report_lines_owner_update" on public.expense_report_lines;
+create policy "expense_report_lines_owner_update"
+on public.expense_report_lines
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.expense_reports
+    where expense_reports.id = expense_report_lines.expense_report_id
+      and expense_reports.guide_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.expense_reports
+    where expense_reports.id = expense_report_lines.expense_report_id
+      and expense_reports.guide_id = auth.uid()
+  )
+);
+
+drop policy if exists "expense_report_lines_owner_delete" on public.expense_report_lines;
+create policy "expense_report_lines_owner_delete"
+on public.expense_report_lines
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.expense_reports
+    where expense_reports.id = expense_report_lines.expense_report_id
+      and expense_reports.guide_id = auth.uid()
+  )
+);
+
+revoke all on table public.expense_report_lines from anon, public;
+grant select, insert, update, delete on table public.expense_report_lines to authenticated;

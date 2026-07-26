@@ -31,6 +31,13 @@ This is the simplified first-pass Supabase schema for Guide Cash Tracking.
   - `submitted` = yellow
   - `processed` = green
 
+### Expense report lines
+- `expense_report_id` -> `expense_reports.id`
+- `line_date`
+- `description`
+- `category`
+- `amount`
+
 ## Relationship summary
 
 ```mermaid
@@ -38,6 +45,7 @@ erDiagram
   auth_users ||--o{ tours : guides
   tours ||--o{ expense_reports : contains
   auth_users ||--o{ expense_reports : submits
+  expense_reports ||--o{ expense_report_lines : includes
 
   auth_users {
     uuid id PK
@@ -63,6 +71,15 @@ erDiagram
     numeric amount
     expense_report_status status
   }
+
+  expense_report_lines {
+    uuid id PK
+    uuid expense_report_id FK
+    date line_date
+    text description
+    text category
+    numeric amount
+  }
 ```
 
 ## Notes
@@ -73,4 +90,5 @@ erDiagram
 - Each guide can only see and add rows where the ownership column matches their `auth.uid()`.
 - Tours are read/add only for the owning guide.
 - Expense reports are read/add/update/delete only for the owning guide.
+- Expense report lines are read/add/update/delete only for the owning guide through the parent report.
 - Table access is limited to authenticated users.
