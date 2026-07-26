@@ -15,7 +15,7 @@ const routes = [
   },
   {
     pattern: /^\/login\/?$/,
-    title: 'Login',
+    title: 'Auth',
     render: renderLoginPage,
   },
   {

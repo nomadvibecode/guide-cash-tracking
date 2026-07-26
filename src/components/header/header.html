@@ -19,7 +19,7 @@
             <a class="nav-link" href="/" data-link="true" data-nav-link>Home</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="/login" data-link="true" data-nav-link>Login</a>
+            <a class="nav-link" href="/login" data-link="true" data-nav-link data-auth-link>Login / Register</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="/dashboard" data-link="true" data-nav-link>Dashboard</a>
@@ -29,6 +29,9 @@
           </li>
           <li class="nav-item">
             <a class="nav-link" href="/running-balance/42" data-link="true" data-nav-link>Running Balance</a>
+          </li>
+          <li class="nav-item d-none" data-logged-in-only>
+            <button class="nav-link nav-link-button" type="button" data-logout-button>Logout</button>
           </li>
         </ul>
       </div>

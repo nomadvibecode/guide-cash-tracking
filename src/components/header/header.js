@@ -1,4 +1,5 @@
 import { loadFragment } from '../../utils/fragment-loader.js';
+import { getCurrentSession, signOutCurrentUser } from '../../services/auth.js';
 
 import './header.css';
 
@@ -17,4 +18,40 @@ function setActiveNavigationLink(container, pathname) {
 export async function renderHeader(container, pathname) {
   container.innerHTML = await loadFragment(headerFragmentUrl);
   setActiveNavigationLink(container, pathname);
+
+  const authItem = container.querySelector('[data-auth-link]')?.closest('.nav-item');
+  const loggedInItem = container.querySelector('[data-logged-in-only]');
+  const logoutButton = container.querySelector('[data-logout-button]');
+
+  try {
+    const session = await getCurrentSession();
+
+    if (session) {
+      authItem?.classList.add('d-none');
+      loggedInItem?.classList.remove('d-none');
+
+      logoutButton?.addEventListener('click', async () => {
+        logoutButton.disabled = true;
+
+        try {
+          const { error } = await signOutCurrentUser();
+
+          if (error) {
+            throw error;
+          }
+
+          window.location.replace('/');
+        } catch {
+          logoutButton.disabled = false;
+        }
+      });
+
+      return;
+    }
+  } catch {
+    // Render the logged-out state when the session cannot be read.
+  }
+
+  authItem?.classList.remove('d-none');
+  loggedInItem?.classList.add('d-none');
 }

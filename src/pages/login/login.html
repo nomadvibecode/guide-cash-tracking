@@ -3,21 +3,32 @@
     <div class="row justify-content-center py-4 py-md-5">
       <div class="col-12 col-md-10 col-lg-7 col-xl-6">
         <div class="login-header text-center mb-4 mb-md-5">
-          <h1 class="h3 fw-bold mb-0">Sign in</h1>
+          <p class="page-kicker mb-2">Authentication</p>
+          <h1 class="h3 fw-bold mb-0" data-auth-title>Sign in</h1>
+          <p class="text-secondary mt-3 mb-0" data-auth-copy>Use your account to access the dashboard and seeded reports.</p>
         </div>
         <div class="page-panel login-card p-4 p-md-5">
-          <form class="vstack gap-4" data-login-form>
+          <div class="btn-group w-100 mb-4" role="tablist" aria-label="Authentication mode">
+            <button class="btn btn-outline-primary active" type="button" data-auth-switch="login">Login</button>
+            <button class="btn btn-outline-primary" type="button" data-auth-switch="register">Register</button>
+          </div>
+
+          <form class="vstack gap-4" data-auth-form>
             <div>
-              <label class="form-label mb-2" for="loginEmail">Email</label>
-              <input class="form-control form-control-lg" id="loginEmail" name="email" type="email" placeholder="demo@example.com" />
+              <label class="form-label mb-2" for="authEmail">Email</label>
+              <input class="form-control form-control-lg" id="authEmail" name="email" type="email" placeholder="demo@example.com" required />
             </div>
             <div>
-              <label class="form-label mb-2" for="loginPassword">Password</label>
-              <input class="form-control form-control-lg" id="loginPassword" name="password" type="password" placeholder="Password" />
+              <label class="form-label mb-2" for="authPassword">Password</label>
+              <input class="form-control form-control-lg" id="authPassword" name="password" type="password" placeholder="Password" minlength="6" required />
             </div>
-            <button class="btn btn-primary btn-lg py-3" type="submit">Login</button>
+            <div data-register-fields hidden>
+              <label class="form-label mb-2" for="authConfirmPassword">Confirm password</label>
+              <input class="form-control form-control-lg" id="authConfirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" minlength="6" />
+            </div>
+            <button class="btn btn-primary btn-lg py-3" type="submit" data-auth-submit>Login</button>
           </form>
-          <p class="small text-secondary mt-4 mb-0 text-center" data-login-status>
+          <p class="small text-secondary mt-4 mb-0 text-center" data-auth-status>
           </p>
         </div>
       </div>
