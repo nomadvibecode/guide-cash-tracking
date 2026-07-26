@@ -69,4 +69,8 @@ erDiagram
 - The schema is intentionally minimal.
 - `tour_guides` can be added later if profile-specific data becomes necessary.
 - `updated_at` is included for future editing flows.
-- RLS policies are not defined yet and should be added before exposing data.
+- Owner-based RLS is enabled on `tours` and `expense_reports`.
+- Each guide can only see and add rows where the ownership column matches their `auth.uid()`.
+- Tours are read/add only for the owning guide.
+- Expense reports are read/add/update/delete only for the owning guide.
+- Table access is limited to authenticated users.

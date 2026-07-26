@@ -45,3 +45,57 @@ create index expense_reports_tour_id_idx on public.expense_reports (tour_id);
 create index expense_reports_guide_id_idx on public.expense_reports (guide_id);
 create index expense_reports_status_idx on public.expense_reports (status);
 create index expense_reports_transaction_date_idx on public.expense_reports (transaction_date);
+
+alter table public.tours enable row level security;
+
+drop policy if exists "tours_owner_select" on public.tours;
+create policy "tours_owner_select"
+on public.tours
+for select
+to authenticated
+using (auth.uid() = tour_guide_id);
+
+drop policy if exists "tours_owner_insert" on public.tours;
+create policy "tours_owner_insert"
+on public.tours
+for insert
+to authenticated
+with check (auth.uid() = tour_guide_id);
+
+drop policy if exists "tours_owner_update" on public.tours;
+revoke all on table public.tours from anon, public;
+grant select, insert on table public.tours to authenticated;
+
+alter table public.expense_reports enable row level security;
+
+drop policy if exists "expense_reports_owner_select" on public.expense_reports;
+create policy "expense_reports_owner_select"
+on public.expense_reports
+for select
+to authenticated
+using (auth.uid() = guide_id);
+
+drop policy if exists "expense_reports_owner_insert" on public.expense_reports;
+create policy "expense_reports_owner_insert"
+on public.expense_reports
+for insert
+to authenticated
+with check (auth.uid() = guide_id);
+
+drop policy if exists "expense_reports_owner_update" on public.expense_reports;
+create policy "expense_reports_owner_update"
+on public.expense_reports
+for update
+to authenticated
+using (auth.uid() = guide_id)
+with check (auth.uid() = guide_id);
+
+drop policy if exists "expense_reports_owner_delete" on public.expense_reports;
+create policy "expense_reports_owner_delete"
+on public.expense_reports
+for delete
+to authenticated
+using (auth.uid() = guide_id);
+
+revoke all on table public.expense_reports from anon, public;
+grant select, insert, update, delete on table public.expense_reports to authenticated;

@@ -43,3 +43,8 @@ create index expense_reports_tour_id_idx on public.expense_reports (tour_id);
 create index expense_reports_guide_id_idx on public.expense_reports (guide_id);
 create index expense_reports_status_idx on public.expense_reports (status);
 create index expense_reports_transaction_date_idx on public.expense_reports (transaction_date);
+
+-- RLS is enabled in the migration file.
+-- Access is owner-based and limited to authenticated users.
+-- Tours: read and add only.
+-- Expense reports: read, add, edit, and delete only.
