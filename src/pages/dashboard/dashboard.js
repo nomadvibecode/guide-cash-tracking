@@ -1,10 +1,17 @@
 import { hasSupabaseConfig, supabase } from '../../services/supabase-client.js';
 import { getCurrentSession } from '../../services/auth.js';
+import { loadToursPageData } from '../../services/tours.js';
 import { addExpenseTransaction, ensureGuideWorkspace } from '../../services/guide-workspace.js';
 
 import './dashboard.css';
 
 const moneyFormatterCache = new Map();
+
+function normalizeCurrencyCode(currency) {
+  const normalized = String(currency ?? '').trim().toUpperCase();
+
+  return /^[A-Z]{3}$/.test(normalized) ? normalized : 'USD';
+}
 
 function formatDate(value) {
   return new Intl.DateTimeFormat('en-US', {
@@ -15,18 +22,20 @@ function formatDate(value) {
 }
 
 function formatMoney(value, currency) {
-  if (!moneyFormatterCache.has(currency)) {
+  const normalizedCurrency = normalizeCurrencyCode(currency);
+
+  if (!moneyFormatterCache.has(normalizedCurrency)) {
     moneyFormatterCache.set(
-      currency,
+      normalizedCurrency,
       new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency,
+        currency: normalizedCurrency,
         maximumFractionDigits: 2,
       }),
     );
   }
 
-  return moneyFormatterCache.get(currency).format(Number(value));
+  return moneyFormatterCache.get(normalizedCurrency).format(Number(value));
 }
 
 function statusLabel(status) {
@@ -55,6 +64,324 @@ function directionClass(direction) {
 
 function summaryValue(value) {
   return value ?? '—';
+}
+
+function displayNameFromEmail(email) {
+  const localPart = (email ?? 'guide').split('@')[0];
+
+  return localPart
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function splitToursByStatus(tours) {
+  return tours.reduce(
+    (groups, tour) => {
+      groups[tour.status] ??= [];
+      groups[tour.status].push(tour);
+      return groups;
+    },
+    {
+      not_started: [],
+      in_progress: [],
+      finished: [],
+    },
+  );
+}
+
+function countFinishedTours(tours) {
+  return tours.filter((tour) => tour.status === 'finished').length;
+}
+
+function buildTourPieData(tours) {
+  const total = tours.length;
+  const finished = countFinishedTours(tours);
+  const remaining = Math.max(total - finished, 0);
+  const finishedShare = total > 0 ? finished / total : 0;
+
+  return { total, finished, remaining, finishedShare };
+}
+
+function buildCurrencySummaries(reports) {
+  const today = new Date().toISOString().slice(0, 10);
+  const summariesByCurrency = new Map();
+
+  for (const report of reports) {
+    for (const line of report.lines ?? []) {
+      if (line.line_date > today) {
+        continue;
+      }
+
+      const currency = normalizeCurrencyCode(line.currency ?? report.currency ?? 'USD');
+      const currentSummary = summariesByCurrency.get(currency) ?? {
+        currency,
+        moneyIn: 0,
+        expenses: 0,
+        transactionCount: 0,
+      };
+
+      const amount = Number(line.amount) || 0;
+      currentSummary.transactionCount += 1;
+
+      if (line.direction === 'money_in') {
+        currentSummary.moneyIn += amount;
+      } else {
+        currentSummary.expenses += amount;
+      }
+
+      summariesByCurrency.set(currency, currentSummary);
+    }
+  }
+
+  return [...summariesByCurrency.values()].sort((left, right) => left.currency.localeCompare(right.currency));
+}
+
+function renderTourPieChart(tours, reports) {
+  const { total, finished, remaining, finishedShare } = buildTourPieData(tours);
+  const angle = `${(finishedShare * 360).toFixed(2)}deg`;
+
+  return `
+    <section class="page-section pt-0">
+      <div class="container">
+        <div class="row g-4 align-items-stretch mb-4">
+          <div class="col-12 col-xl-5">
+            <div class="page-panel p-4 p-lg-5 h-100 dashboard-insight-card">
+              <p class="page-kicker mb-2">Tour overview</p>
+              <h2 class="h4 mb-3">Total tours vs tours finished</h2>
+              <div class="dashboard-pie-wrap">
+                <div class="dashboard-pie-chart" style="--dashboard-chart-angle: ${angle};">
+                  <div class="dashboard-pie-chart-center">
+                    <div class="dashboard-pie-chart-value">${finished}/${total}</div>
+                    <div class="dashboard-pie-chart-label text-secondary">Finished</div>
+                  </div>
+                </div>
+                <div class="dashboard-pie-legend">
+                  <div class="dashboard-pie-legend-item">
+                    <span class="dashboard-pie-dot is-finished"></span>
+                    <div>
+                      <div class="dashboard-pie-legend-label">Finished tours</div>
+                      <div class="dashboard-pie-legend-value">${finished}</div>
+                    </div>
+                  </div>
+                  <div class="dashboard-pie-legend-item">
+                    <span class="dashboard-pie-dot is-remaining"></span>
+                    <div>
+                      <div class="dashboard-pie-legend-label">Remaining tours</div>
+                      <div class="dashboard-pie-legend-value">${remaining}</div>
+                    </div>
+                  </div>
+                  <div class="dashboard-pie-legend-item dashboard-pie-legend-total">
+                    <div>
+                      <div class="dashboard-pie-legend-label">Total tours</div>
+                      <div class="dashboard-pie-legend-value">${total}</div>
+                    </div>
+                    <span class="badge rounded-pill border bg-light text-dark border-light-subtle">${Math.round(finishedShare * 100)}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-7">
+            <div class="page-panel p-4 p-lg-5 h-100 dashboard-insight-card">
+              <p class="page-kicker mb-2">Currencies</p>
+              <h2 class="h4 mb-3">Money-in vs expenses by currency</h2>
+              <p class="text-secondary mb-4">Totals are calculated from your report lines up to today, so guides with multiple currencies see each one separately.</p>
+              <div class="dashboard-currency-grid">
+                ${buildCurrencySummaries(reports)
+                  .map(
+                    (summary) => `
+                      <article class="dashboard-currency-card">
+                        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                          <div>
+                            <p class="page-kicker mb-2">${summary.currency}</p>
+                            <h3 class="h5 mb-0">${summary.transactionCount} transactions</h3>
+                          </div>
+                          <span class="badge rounded-pill border bg-light text-dark border-light-subtle">${summary.currency}</span>
+                        </div>
+                        <div class="dashboard-currency-metrics">
+                          <div>
+                            <div class="dashboard-summary-label mb-1">Money in</div>
+                            <div class="dashboard-currency-value text-success">${formatMoney(summary.moneyIn, summary.currency)}</div>
+                          </div>
+                          <div>
+                            <div class="dashboard-summary-label mb-1">Expenses</div>
+                            <div class="dashboard-currency-value text-danger">${formatMoney(summary.expenses, summary.currency)}</div>
+                          </div>
+                        </div>
+                        <div class="dashboard-currency-net mt-3">
+                          <span class="dashboard-summary-label">Net</span>
+                          <span class="dashboard-currency-value">${formatMoney(summary.moneyIn - summary.expenses, summary.currency)}</span>
+                        </div>
+                      </article>
+                    `,
+                  )
+                  .join('') || '<div class="text-secondary">No transactions have been recorded yet.</div>'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        ${session?.user ? renderToursBoard(assignedTours, currentGuideName) : ''}
+
+        ${session?.user ? renderTransactionPanel(reports) : ''}
+
+        ${session?.user && !hasReports ? renderNoToursState() : ''}
+
+        <div class="dashboard-report-list">
+          ${reports.map(renderReportCard).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function getTourDays(tour) {
+  const start = new Date(tour.start_date);
+  const end = new Date(tour.end_date);
+  const diff = Math.round((end - start) / 86400000) + 1;
+
+  return Number.isFinite(diff) && diff > 0 ? diff : 1;
+}
+
+function renderTourStatusLabel(status) {
+  return status.replaceAll('_', ' ');
+}
+
+function renderTourStatusClass(status) {
+  if (status === 'finished') {
+    return 'bg-success-subtle text-success border-success-subtle';
+  }
+
+  if (status === 'in_progress') {
+    return 'bg-warning-subtle text-warning-emphasis border-warning-subtle';
+  }
+
+  return 'bg-danger-subtle text-danger border-danger-subtle';
+}
+
+function renderTourGuideName(assignment, ownerGuideId) {
+  const guide = assignment.guide_profiles;
+  const label = guide?.display_name ?? displayNameFromEmail(guide?.email);
+  const tags = [];
+
+  if (assignment.guide_id === ownerGuideId) {
+    tags.push('owner');
+  }
+
+  return `${label}${tags.length > 0 ? ` · ${tags.join(', ')}` : ''}`;
+}
+
+function renderTourCard(tour) {
+  const guideAssignments = [...(tour.tour_guides ?? [])].sort((left, right) => {
+    if (left.guide_id === tour.tour_guide_id) {
+      return -1;
+    }
+
+    if (right.guide_id === tour.tour_guide_id) {
+      return 1;
+    }
+
+    return 0;
+  });
+
+  const guideCount = guideAssignments.length;
+  const days = tour.tour_days ?? getTourDays(tour);
+
+  return `
+    <article class="tour-card">
+      <div class="tour-card-header">
+        <div>
+          <h3 class="tour-card-title">${tour.tour_name}</h3>
+          <div class="tour-card-meta mt-2">${formatDate(tour.start_date)} - ${formatDate(tour.end_date)}</div>
+        </div>
+        <span class="badge rounded-pill border ${renderTourStatusClass(tour.status)}">${renderTourStatusLabel(tour.status)}</span>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <span class="badge rounded-pill border bg-light text-dark border-light-subtle">${days} days</span>
+        <span class="badge rounded-pill border bg-light text-dark border-light-subtle">${guideCount} guides</span>
+        <span class="badge rounded-pill border bg-light text-dark border-light-subtle">${tour.guest_count} guests</span>
+      </div>
+
+      <div class="tour-guides">
+        ${guideAssignments.map((assignment) => `<span class="tour-guide-chip ${assignment.guide_id === tour.tour_guide_id ? 'is-owner' : ''}">${renderTourGuideName(assignment, tour.tour_guide_id)}</span>`).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function renderToursBoard(tours, currentGuideName) {
+  const groupedTours = splitToursByStatus(tours);
+
+  return `
+    <section class="page-section pt-0">
+      <div class="container">
+        <div class="page-panel p-4 p-lg-5 mb-4">
+          <p class="page-kicker mb-2">Tours</p>
+          <h2 class="h4 mb-3">${currentGuideName}’s assigned tours</h2>
+          <p class="mb-0 text-secondary">All tours you created or joined are grouped by status below.</p>
+        </div>
+
+        <div class="tour-status-board dashboard-tour-status-board">
+          <section class="tour-status-column">
+            <div class="tour-status-column-header">
+              <div>
+                <p class="page-kicker mb-2">Not started</p>
+                <h3 class="h5 mb-1">Red status</h3>
+              </div>
+              <span class="tour-status-count">${groupedTours.not_started.length}</span>
+            </div>
+            <div class="tour-status-list">
+              ${(groupedTours.not_started.map(renderTourCard).join('') || '<div class="tour-status-empty text-secondary">No tours in this status.</div>')}
+            </div>
+          </section>
+
+          <section class="tour-status-column">
+            <div class="tour-status-column-header">
+              <div>
+                <p class="page-kicker mb-2">In progress</p>
+                <h3 class="h5 mb-1">Yellow status</h3>
+              </div>
+              <span class="tour-status-count">${groupedTours.in_progress.length}</span>
+            </div>
+            <div class="tour-status-list">
+              ${(groupedTours.in_progress.map(renderTourCard).join('') || '<div class="tour-status-empty text-secondary">No tours in this status.</div>')}
+            </div>
+          </section>
+
+          <section class="tour-status-column">
+            <div class="tour-status-column-header">
+              <div>
+                <p class="page-kicker mb-2">Finished</p>
+                <h3 class="h5 mb-1">Green status</h3>
+              </div>
+              <span class="tour-status-count">${groupedTours.finished.length}</span>
+            </div>
+            <div class="tour-status-list">
+              ${(groupedTours.finished.map(renderTourCard).join('') || '<div class="tour-status-empty text-secondary">No tours in this status.</div>')}
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderNoToursState() {
+  return `
+    <section class="page-section pt-0">
+      <div class="container">
+        <div class="page-panel p-4 p-lg-5 text-center">
+          <p class="page-kicker mb-2">Tours</p>
+          <h2 class="h4 mb-3">No assigned tours yet</h2>
+          <p class="mb-0 text-secondary">Use the Tours tab to join an existing tour or create your own tour.</p>
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function renderLoadingState() {
@@ -121,7 +448,7 @@ function renderTransactionPanel(reports) {
     .join('');
 
   const defaultReport = reports[0];
-  const defaultCurrency = defaultReport?.currency ?? 'USD';
+  const defaultCurrency = normalizeCurrencyCode(defaultReport?.currency ?? 'USD');
   const today = new Date().toISOString().slice(0, 10);
 
   return `
@@ -281,18 +608,23 @@ function renderReportCard(report) {
   `;
 }
 
-async function loadReports() {
-  const [reportsResult, linesResult] = await Promise.all([
-    supabase
-      .from('dashboard_expense_report_overview')
-      .select('*')
-      .order('start_date', { ascending: false })
-      .order('transaction_date', { ascending: false }),
-    supabase
-      .from('expense_report_lines')
-      .select('id, expense_report_id, line_date, description, category, direction, currency, amount')
-      .order('line_date', { ascending: true }),
-  ]);
+async function loadReports(guideId = null) {
+  let reportsQuery = supabase
+    .from('dashboard_expense_report_overview')
+    .select('*')
+    .order('start_date', { ascending: false })
+    .order('transaction_date', { ascending: false });
+
+  let linesQuery = supabase
+    .from('expense_report_lines')
+    .select('id, expense_report_id, line_date, description, category, direction, currency, amount')
+    .order('line_date', { ascending: true });
+
+  if (guideId) {
+    reportsQuery = reportsQuery.eq('guide_id', guideId);
+  }
+
+  const [reportsResult, linesResult] = await Promise.all([reportsQuery, linesQuery]);
 
   const firstError = reportsResult.error ?? linesResult.error;
 
@@ -324,14 +656,18 @@ export async function renderDashboardPage(container) {
 
   try {
     const session = await getCurrentSession();
-    const reports = await loadReports();
+    const [reports, tours] = await Promise.all([
+      loadReports(session?.user?.id ?? null),
+      session?.user ? loadToursPageData() : Promise.resolve([]),
+    ]);
 
-    if (reports.length === 0) {
-      if (!session?.user) {
-        container.innerHTML = renderEmptyState();
-        return;
-      }
+    const assignedTours = session?.user
+      ? tours.filter((tour) => (tour.tour_guides ?? []).some((assignment) => assignment.guide_id === session.user.id))
+      : [];
+    const currentGuideName = session?.user ? displayNameFromEmail(session.user.email) : 'Guide';
+    const hasReports = reports.length > 0;
 
+    if (session?.user && reports.length === 0 && assignedTours.length === 0) {
       container.innerHTML = renderEmptyWorkspaceState();
 
       const createStarterWorkspaceButton = container.querySelector('[data-create-starter-workspace]');
@@ -359,7 +695,10 @@ export async function renderDashboardPage(container) {
             <p class="lead text-secondary mb-0">The browser is now connected to Supabase and showing the seeded demo records.</p>
           </div>
 
+          ${session?.user ? renderTourPieChart(assignedTours, reports) : ''}
+          ${session?.user ? renderToursBoard(assignedTours, currentGuideName) : ''}
           ${session?.user ? renderTransactionPanel(reports) : ''}
+          ${session?.user && !hasReports ? renderNoToursState() : ''}
 
           <div class="dashboard-report-list">
             ${reports.map(renderReportCard).join('')}
@@ -380,7 +719,7 @@ export async function renderDashboardPage(container) {
         const selectedReport = reportMap.get(reportSelect.value);
 
         if (selectedReport) {
-          currencySelect.value = selectedReport.currency;
+          currencySelect.value = normalizeCurrencyCode(selectedReport.currency);
         }
       };
 
@@ -402,7 +741,7 @@ export async function renderDashboardPage(container) {
         const category = transactionForm.category.value.trim();
         const direction = directionSelect.value;
         const transactionDate = transactionForm.transactionDate.value;
-          const currency = currencySelect.value;
+        const currency = currencySelect.value;
 
         if (!description || !category || !transactionDate || !Number.isFinite(amount) || amount <= 0) {
           transactionStatus.textContent = 'Fill in a valid date, description, category, and amount.';

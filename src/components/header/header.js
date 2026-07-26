@@ -1,9 +1,9 @@
-import { loadFragment } from '../../utils/fragment-loader.js';
 import { getCurrentSession, signOutCurrentUser } from '../../services/auth.js';
+import { supabase } from '../../services/supabase-client.js';
 
 import './header.css';
 
-const headerFragmentUrl = new URL('./header.html', import.meta.url);
+import headerFragment from './header.html?raw';
 
 function setActiveNavigationLink(container, pathname) {
   container.querySelectorAll('[data-nav-link]').forEach((link) => {
@@ -15,11 +15,38 @@ function setActiveNavigationLink(container, pathname) {
   });
 }
 
+function fallbackDisplayName(email) {
+  const localPart = (email ?? 'User').split('@')[0];
+
+  return localPart
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+async function getSignedInGuideName(session) {
+  const email = session?.user?.email ?? '';
+
+  if (!supabase || !session?.user?.id) {
+    return fallbackDisplayName(email);
+  }
+
+  const { data } = await supabase
+    .from('guide_profiles')
+    .select('display_name')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  return data?.display_name ?? fallbackDisplayName(email);
+}
+
 export async function renderHeader(container, pathname) {
-  container.innerHTML = await loadFragment(headerFragmentUrl);
+  container.innerHTML = headerFragment;
   setActiveNavigationLink(container, pathname);
 
-  const authItem = container.querySelector('[data-auth-link]')?.closest('.nav-item');
+  const authLink = container.querySelector('[data-auth-link]');
+  const navItems = container.querySelectorAll('[data-nav-item]');
   const loggedInItem = container.querySelector('[data-logged-in-only]');
   const logoutButton = container.querySelector('[data-logout-button]');
 
@@ -27,7 +54,15 @@ export async function renderHeader(container, pathname) {
     const session = await getCurrentSession();
 
     if (session) {
-      authItem?.classList.add('d-none');
+      const guideName = await getSignedInGuideName(session);
+
+      navItems.forEach((item) => item.classList.remove('d-none'));
+
+      if (authLink) {
+        authLink.textContent = guideName;
+        authLink.setAttribute('href', '/dashboard');
+      }
+
       loggedInItem?.classList.remove('d-none');
 
       logoutButton?.addEventListener('click', async () => {
@@ -52,6 +87,12 @@ export async function renderHeader(container, pathname) {
     // Render the logged-out state when the session cannot be read.
   }
 
-  authItem?.classList.remove('d-none');
+  if (authLink) {
+    authLink.textContent = 'Login / Register';
+    authLink.setAttribute('href', '/login');
+  }
+
+  navItems.forEach((item) => item.classList.add('d-none'));
+  authLink?.closest('li')?.classList.remove('d-none');
   loggedInItem?.classList.add('d-none');
 }

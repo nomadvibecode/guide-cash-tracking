@@ -75,6 +75,15 @@ export async function ensureGuideWorkspace(user) {
     throw tourError;
   }
 
+  const { error: guideError } = await client.from('tour_guides').insert({
+    tour_id: tour.id,
+    guide_id: user.id,
+  });
+
+  if (guideError) {
+    throw guideError;
+  }
+
   const { error: reportError } = await client.from('expense_reports').insert({
     tour_id: tour.id,
     guide_id: user.id,

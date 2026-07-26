@@ -6,8 +6,14 @@ This is the simplified first-pass Supabase schema for Guide Cash Tracking.
 
 ### Tour guides
 - Tour guides are Supabase Auth users.
-- No separate `tour_guides` table is used yet.
+- `tour_guides` stores the guides assigned to a tour.
 - `auth.users.id` is referenced by application tables as the guide identity.
+
+### Tour guide assignments
+- `tour_id` -> `tours.id`
+- `guide_id` -> `guide_profiles.id`
+- Each tour can have up to 3 guide assignments.
+- The owner/creator of the tour is mirrored here as the first assignment.
 
 ### Tours
 - `tour_name`
@@ -68,6 +74,8 @@ This is the simplified first-pass Supabase schema for Guide Cash Tracking.
 erDiagram
   auth_users ||--o{ tours : guides
   auth_users ||--o{ guide_profiles : profile
+  tours ||--o{ tour_guides : assigns
+  guide_profiles ||--o{ tour_guides : joins
   tours ||--o{ expense_reports : contains
   auth_users ||--o{ expense_reports : submits
   expense_reports ||--o{ expense_report_lines : includes
@@ -86,6 +94,12 @@ erDiagram
     uuid tour_guide_id FK
     tour_status status
     int guest_count
+  }
+
+  tour_guides {
+    uuid id PK
+    uuid tour_id FK
+    uuid guide_id FK
   }
 
   guide_profiles {
@@ -134,7 +148,7 @@ erDiagram
 
 ## Notes
 - The schema is intentionally minimal.
-- `tour_guides` can be added later if profile-specific data becomes necessary.
+- `tour_guides` stores all assigned guides for a tour, including the owner.
 - `updated_at` is included for future editing flows.
 - Owner-based RLS is enabled on `tours` and `expense_reports`.
 - For the browser demo, `anon` can read seeded `tours`, `expense_reports`, and `expense_report_lines`.
@@ -142,6 +156,7 @@ erDiagram
 - For the browser demo, `anon` can read `expense_report_attachments` and the dashboard overview view.
 - Each guide can still only add or edit rows where the ownership column matches their `auth.uid()`.
 - Tours are public-read and add-only for the owning guide.
+- Tour guide assignments are limited to 3 guide rows per tour.
 - Expense reports are public-read and add/update/delete only for the owning guide.
 - Expense report lines are public-read and add/update/delete only for the owning guide through the parent report.
 - Expense report attachments are public-read and add/update/delete only for the owning guide through the parent report.

@@ -98,9 +98,23 @@ create view public.dashboard_expense_report_overview as
 create index expense_report_lines_expense_report_id_idx on public.expense_report_lines (expense_report_id);
 create index expense_report_lines_line_date_idx on public.expense_report_lines (line_date);
 
+create table public.tour_guides (
+  id uuid primary key default gen_random_uuid(),
+  tour_id uuid not null references public.tours(id) on delete cascade,
+  guide_id uuid not null references public.guide_profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint tour_guides_unique_tour_guide unique (tour_id, guide_id)
+);
+
+comment on table public.tour_guides is 'Guide allocations for tours. The owner is mirrored here so the shared tour list can show every assigned guide.';
+
+create index tour_guides_tour_id_idx on public.tour_guides (tour_id);
+create index tour_guides_guide_id_idx on public.tour_guides (guide_id);
+
 -- RLS is enabled in the migration file.
 -- Access is owner-based and limited to authenticated users.
 -- Tours: read publicly for demo usage, add only for the owning guide.
+-- Tour guides: read and manage only through authenticated guide sessions; each tour is capped at 3 guide rows.
 -- Expense reports: read publicly for demo usage, add/edit/delete only for the owning guide.
 -- Expense report lines: read publicly for demo usage, add/edit/delete only through their parent report.
 -- Expense report attachments: read publicly for demo usage, add/edit/delete only through their parent report.

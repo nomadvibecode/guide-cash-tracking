@@ -1,11 +1,9 @@
-import { loadFragment } from '../../utils/fragment-loader.js';
-
 import './not-found.css';
 
-const notFoundFragmentUrl = new URL('./not-found.html', import.meta.url);
+import notFoundFragment from './not-found.html?raw';
 
 export async function renderNotFoundPage(container, params = {}) {
-  container.innerHTML = await loadFragment(notFoundFragmentUrl);
+  container.innerHTML = notFoundFragment;
 
   const pathNode = container.querySelector('[data-pathname]');
 

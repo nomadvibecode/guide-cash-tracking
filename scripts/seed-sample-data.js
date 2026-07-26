@@ -102,6 +102,27 @@ function buildAttachment(reportId, attachmentIndex, userIndex, tourIndex) {
   };
 }
 
+async function upsertTourGuides(tour, guides, ownerIndex, tourIndex) {
+  const extraGuides = tourIndex === 0
+    ? guides
+        .filter((guide) => guide.id !== tour.tour_guide_id)
+        .slice(ownerIndex % 2, ownerIndex % 2 + 2)
+    : [];
+
+  const assignments = [
+    { tour_id: tour.id, guide_id: tour.tour_guide_id },
+    ...extraGuides.map((guide) => ({ tour_id: tour.id, guide_id: guide.id })),
+  ];
+
+  const { error } = await supabase.from('tour_guides').upsert(assignments, {
+    onConflict: 'tour_id,guide_id',
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function createGuideUser(userIndex) {
   const email = `guide-${userIndex + 1}@example.com`;
 
@@ -376,6 +397,8 @@ async function main() {
 
     for (let tourIndex = 0; tourIndex < toursPerGuide; tourIndex += 1) {
       const tour = await getOrCreateTour(user, index, tourIndex);
+      await upsertTourGuides(tour, guides, index, tourIndex);
+
       if (tourIndex === 0) {
         const report = await getOrCreateExpenseReport(user, tour, index, tourIndex);
         const result = await seedReportLines(report, index, tourIndex, runningBalance);

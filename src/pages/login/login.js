@@ -1,11 +1,9 @@
-import { loadFragment } from '../../utils/fragment-loader.js';
 import { getCurrentSession, signInWithEmail, signUpWithEmail } from '../../services/auth.js';
-import { ensureGuideWorkspace } from '../../services/guide-workspace.js';
 import { hasSupabaseConfig } from '../../services/supabase-client.js';
 
 import './login.css';
 
-const loginFragmentUrl = new URL('./login.html', import.meta.url);
+import loginFragment from './login.html?raw';
 
 const authModeCopy = {
   login: {
@@ -79,7 +77,7 @@ export async function renderLoginPage(container) {
     // Continue rendering the form if the session cannot be read.
   }
 
-  container.innerHTML = await loadFragment(loginFragmentUrl);
+  container.innerHTML = loginFragment;
 
   const form = container.querySelector('[data-auth-form]');
   const status = container.querySelector('[data-auth-status]');
@@ -124,26 +122,6 @@ export async function renderLoginPage(container) {
           throw error;
         }
 
-        const activeSession = data.session ?? (await getCurrentSession());
-
-        if (activeSession?.user) {
-          await ensureGuideWorkspace(activeSession.user);
-          window.location.replace('/dashboard');
-          return;
-        }
-
-        const signInResult = await signInWithEmail(email, password);
-
-        if (signInResult.error) {
-          throw signInResult.error;
-        }
-
-        const signedInSession = signInResult.data?.session ?? (await getCurrentSession());
-
-        if (signedInSession?.user) {
-          await ensureGuideWorkspace(signedInSession.user);
-        }
-
         window.location.replace('/dashboard');
         return;
       }
@@ -152,12 +130,6 @@ export async function renderLoginPage(container) {
 
       if (error) {
         throw error;
-      }
-
-      const session = data.session ?? (await getCurrentSession());
-
-      if (session?.user) {
-        await ensureGuideWorkspace(session.user);
       }
 
       window.location.replace('/dashboard');
