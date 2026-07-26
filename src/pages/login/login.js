@@ -1,5 +1,6 @@
 import { loadFragment } from '../../utils/fragment-loader.js';
 import { getCurrentSession, signInWithEmail, signUpWithEmail } from '../../services/auth.js';
+import { ensureGuideWorkspace } from '../../services/guide-workspace.js';
 import { hasSupabaseConfig } from '../../services/supabase-client.js';
 
 import './login.css';
@@ -123,7 +124,10 @@ export async function renderLoginPage(container) {
           throw error;
         }
 
-        if (data.session) {
+        const activeSession = data.session ?? (await getCurrentSession());
+
+        if (activeSession?.user) {
+          await ensureGuideWorkspace(activeSession.user);
           window.location.replace('/dashboard');
           return;
         }
@@ -134,14 +138,26 @@ export async function renderLoginPage(container) {
           throw signInResult.error;
         }
 
+        const signedInSession = signInResult.data?.session ?? (await getCurrentSession());
+
+        if (signedInSession?.user) {
+          await ensureGuideWorkspace(signedInSession.user);
+        }
+
         window.location.replace('/dashboard');
         return;
       }
 
-      const { error } = await signInWithEmail(email, password);
+      const { data, error } = await signInWithEmail(email, password);
 
       if (error) {
         throw error;
+      }
+
+      const session = data.session ?? (await getCurrentSession());
+
+      if (session?.user) {
+        await ensureGuideWorkspace(session.user);
       }
 
       window.location.replace('/dashboard');

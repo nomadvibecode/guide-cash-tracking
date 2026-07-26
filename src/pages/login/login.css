@@ -1,6 +1,7 @@
 .login-card {
   overflow: hidden;
   border-radius: 1.75rem;
+  display: block;
 }
 
 .login-header {
@@ -14,6 +15,10 @@
 
 .login-card .btn {
   border-radius: 0.95rem;
+}
+
+.login-card [data-auth-form] {
+  width: 100%;
 }
 
 .login-card .btn-group .btn.active {
