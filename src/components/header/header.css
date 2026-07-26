@@ -1,0 +1,17 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  backdrop-filter: blur(18px);
+}
+
+.site-header .nav-link {
+  border-radius: 999px;
+  padding-inline: 0.9rem;
+}
+
+.site-header .nav-link.active,
+.site-header .nav-link:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: #0f172a;
+}

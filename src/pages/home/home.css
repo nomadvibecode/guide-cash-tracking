@@ -1,0 +1,5 @@
+.page-panel {
+  min-height: 18rem;
+  display: flex;
+  align-items: center;
+}

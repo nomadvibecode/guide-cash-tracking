@@ -1,0 +1,7 @@
+.site-footer {
+  backdrop-filter: blur(18px);
+}
+
+.site-footer .text-secondary {
+  color: #64748b !important;
+}
