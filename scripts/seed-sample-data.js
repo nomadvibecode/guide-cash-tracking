@@ -23,6 +23,11 @@ const categories = ['Transport', 'Meals', 'Accommodation', 'Supplies', 'Parking'
 const merchants = ['City Market', 'Transit Hub', 'Guest House', 'Road Stop', 'Cafe Central', 'Local Shuttle', 'Museum Desk'];
 const moneyInReasons = ['Cash float from admin', 'Client reimbursement', 'Refund received', 'Local cash received'];
 const moneyOutReasons = ['Breakfast for guests', 'Airport transfer', 'Museum tickets', 'Lunch stop', 'Fuel refill', 'Parking fee', 'Guide supplies', 'Emergency cash out'];
+const newGuidePassword = 'demo1234';
+const targetGuideEmails = Array.from({ length: 5 }, (_, index) => `guide-${index + 10}@example.com`);
+const toursPerGuide = 3;
+const reportLinesMin = 5;
+const reportLinesMax = 11;
 
 const today = new Date();
 
@@ -97,6 +102,26 @@ function buildAttachment(reportId, attachmentIndex, userIndex, tourIndex) {
   };
 }
 
+async function createGuideUser(userIndex) {
+  const email = `guide-${userIndex + 1}@example.com`;
+
+  const { data, error } = await supabase.auth.admin.createUser({
+    email,
+    password: newGuidePassword,
+    email_confirm: true,
+    user_metadata: {
+      display_name: displayNameFromEmail(email),
+      role: 'guide',
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.user;
+}
+
 async function fetchAllUsers() {
   const users = [];
   let page = 1;
@@ -118,6 +143,28 @@ async function fetchAllUsers() {
   }
 
   return users;
+}
+
+async function fetchOrCreateNewGuides() {
+  const users = await fetchAllUsers();
+  const usersByEmail = new Map(users.map((user) => [user.email, user]));
+  const newGuides = [];
+
+  for (const email of targetGuideEmails) {
+    const existingGuide = usersByEmail.get(email);
+
+    if (existingGuide) {
+      newGuides.push(existingGuide);
+      continue;
+    }
+
+    const guideNumber = Number(email.match(/guide-(\d+)@example\.com/)?.[1] ?? '10');
+    const createdUser = await createGuideUser(guideNumber - 1);
+    newGuides.push(createdUser);
+    usersByEmail.set(createdUser.email, createdUser);
+  }
+
+  return newGuides;
 }
 
 async function getOrCreateTour(user, userIndex, tourIndex) {
@@ -185,7 +232,7 @@ async function upsertGuideProfile(user, userIndex) {
 async function getOrCreateExpenseReport(user, tour, userIndex, tourIndex) {
   const { data: existingReport, error: existingReportError } = await supabase
     .from('expense_reports')
-    .select('id, transaction_date, transaction_memo, amount')
+    .select('id, transaction_date, transaction_memo, amount, currency')
     .eq('guide_id', user.id)
     .eq('tour_id', tour.id)
     .order('created_at', { ascending: true })
@@ -199,7 +246,7 @@ async function getOrCreateExpenseReport(user, tour, userIndex, tourIndex) {
     return existingReport[0];
   }
 
-  const reportDate = daysAgo(14 + userIndex);
+  const reportDate = daysAgo(14 + userIndex + tourIndex * 2);
   reportDate.setDate(reportDate.getDate() - tourIndex * 10);
   const reportPayload = {
     tour_id: tour.id,
@@ -214,7 +261,7 @@ async function getOrCreateExpenseReport(user, tour, userIndex, tourIndex) {
   const { data: createdReport, error: createReportError } = await supabase
     .from('expense_reports')
     .insert(reportPayload)
-    .select('id, transaction_date, transaction_memo, amount')
+    .select('id, transaction_date, transaction_memo, amount, currency')
     .single();
 
   if (createReportError) {
@@ -225,11 +272,11 @@ async function getOrCreateExpenseReport(user, tour, userIndex, tourIndex) {
 }
 
 async function seedReportLines(report, userIndex, tourIndex, startingBalance) {
-  const lineCount = randomInt(5, 11);
+  const lineCount = randomInt(reportLinesMin, reportLinesMax);
   const reportDate = new Date(report.transaction_date);
   let netChange = 0;
 
-  const lines = Array.from({ length: lineCount }, (_, lineIndex) => {
+  let lines = Array.from({ length: lineCount }, (_, lineIndex) => {
     const line = buildLine(reportDate, lineIndex, report.currency);
     netChange += line.direction === 'money_in' ? line.amount : -line.amount;
     return {
@@ -237,6 +284,25 @@ async function seedReportLines(report, userIndex, tourIndex, startingBalance) {
       ...line,
     };
   });
+
+  const projectedBalance = Number((startingBalance + netChange).toFixed(2));
+
+  if (projectedBalance < 0) {
+    const topUpAmount = Number((Math.abs(projectedBalance) + randomInt(500, 2_500) / 100).toFixed(2));
+    lines = [
+      ...lines,
+      {
+        expense_report_id: report.id,
+        line_date: formatDate(reportDate),
+        description: 'Opening cash float top-up',
+        category: 'Cash flow',
+        direction: 'money_in',
+        currency: report.currency,
+        amount: topUpAmount,
+      },
+    ];
+    netChange += topUpAmount;
+  }
 
   const { error: deleteError } = await supabase
     .from('expense_report_lines')
@@ -285,7 +351,7 @@ async function seedReportLines(report, userIndex, tourIndex, startingBalance) {
 
   return {
     netChange,
-    lineCount,
+    lineCount: lines.length,
     attachmentCount: attachments.length,
   };
 }
@@ -297,29 +363,31 @@ async function main() {
     throw authError;
   }
 
-  const users = await fetchAllUsers();
+  const guides = await fetchOrCreateNewGuides();
 
-  if (users.length === 0) {
-    console.log('No auth users found. Nothing to seed.');
+  if (guides.length === 0) {
+    console.log('No guides could be prepared. Nothing to seed.');
     return;
   }
 
-  for (const [index, user] of users.entries()) {
+  for (const [index, user] of guides.entries()) {
     await upsertGuideProfile(user, index);
     let runningBalance = Number((randomInt(2_500, 6_500) / 100).toFixed(2));
 
-    for (let tourIndex = 0; tourIndex < 2; tourIndex += 1) {
+    for (let tourIndex = 0; tourIndex < toursPerGuide; tourIndex += 1) {
       const tour = await getOrCreateTour(user, index, tourIndex);
-      const report = await getOrCreateExpenseReport(user, tour, index, tourIndex);
-      const result = await seedReportLines(report, index, tourIndex, runningBalance);
+      if (tourIndex === 0) {
+        const report = await getOrCreateExpenseReport(user, tour, index, tourIndex);
+        const result = await seedReportLines(report, index, tourIndex, runningBalance);
 
-      runningBalance = Number((runningBalance + result.netChange).toFixed(2));
+        runningBalance = Number((runningBalance + result.netChange).toFixed(2));
 
-      console.log(`Seeded ${user.email ?? user.id} / ${tour.tour_name} (${result.lineCount} lines, ${result.attachmentCount} attachments)`);
+        console.log(`Seeded ${user.email ?? user.id} / ${tour.tour_name} (${result.lineCount} lines, ${result.attachmentCount} attachments)`);
+      }
     }
   }
 
-  console.log(`Done. Seeded ${users.length} guide(s) with cash-flow tours.`);
+  console.log(`Done. Seeded ${guides.length} new guide(s) with ${guides.length * toursPerGuide} tours and one report each.`);
 }
 
 main().catch((error) => {
