@@ -72,6 +72,7 @@ Use this file to give the AI dev agent stable, project-wide guidance. Keep it sh
 - Use a GitHub repo to hold the project assets.
 
 ## Documentation
+
 - Generate a project documentation in the GitHub repository.
 - Project description: describe briefly the project (what it does, who can do what, etc.).
 - Architecture: front-end, back-end, technologies used, database, etc.
