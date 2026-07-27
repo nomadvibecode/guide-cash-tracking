@@ -70,7 +70,7 @@ export async function renderLoginPage(container) {
     const session = await getCurrentSession();
 
     if (session) {
-      window.location.replace('/dashboard');
+      window.location.replace('/');
       return;
     }
   } catch {
@@ -122,7 +122,7 @@ export async function renderLoginPage(container) {
           throw error;
         }
 
-        window.location.replace('/dashboard');
+        window.location.replace('/');
         return;
       }
 
@@ -132,7 +132,7 @@ export async function renderLoginPage(container) {
         throw error;
       }
 
-      window.location.replace('/dashboard');
+      window.location.replace('/');
     } catch (error) {
       status.textContent = error?.message ?? 'Authentication failed.';
     } finally {

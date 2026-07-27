@@ -46,6 +46,9 @@ export async function renderHeader(container, pathname) {
   setActiveNavigationLink(container, pathname);
 
   const authLink = container.querySelector('[data-auth-link]');
+  const authLinkItem = container.querySelector('[data-auth-link-item]');
+  const greeting = container.querySelector('[data-header-greeting]');
+  const greetingText = container.querySelector('[data-header-greeting-text]');
   const navItems = container.querySelectorAll('[data-nav-item]');
   const loggedInItem = container.querySelector('[data-logged-in-only]');
   const logoutButton = container.querySelector('[data-logout-button]');
@@ -59,10 +62,16 @@ export async function renderHeader(container, pathname) {
       navItems.forEach((item) => item.classList.remove('d-none'));
 
       if (authLink) {
-        authLink.textContent = guideName;
-        authLink.setAttribute('href', '/dashboard');
+        authLink.setAttribute('href', '/');
+        authLink.textContent = 'Home';
       }
 
+      if (greeting && greetingText) {
+        greetingText.textContent = `Hi, ${guideName}!`;
+        greeting.hidden = false;
+      }
+
+      authLinkItem?.classList.remove('d-none');
       loggedInItem?.classList.remove('d-none');
 
       logoutButton?.addEventListener('click', async () => {
@@ -90,6 +99,13 @@ export async function renderHeader(container, pathname) {
   if (authLink) {
     authLink.textContent = 'Login / Register';
     authLink.setAttribute('href', '/login');
+  }
+
+  if (greeting) {
+    greeting.hidden = true;
+    if (greetingText) {
+      greetingText.textContent = '';
+    }
   }
 
   navItems.forEach((item) => item.classList.add('d-none'));

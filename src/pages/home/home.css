@@ -1,5 +1,7 @@
 .page-panel {
   min-height: 10rem;
   display: flex;
-  align-items: center;
+  flex-direction: column; /* Stacks the heading and paragraph vertically */
+  justify-content: center; /* Vertically centers the text inside the 10rem height */
+  align-items: flex-start; /* Aligns the text to the left side */
 }

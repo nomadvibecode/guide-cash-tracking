@@ -1,0 +1,78 @@
+.expense-report-panel {
+	border-radius: 1.5rem;
+}
+
+.expense-report-balance-banner {
+	display: flex;
+	justify-content: space-between;
+	align-items: end;
+	gap: 1rem;
+	padding: 1rem 1.1rem;
+	border-radius: 1.2rem;
+	background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(16, 185, 129, 0.08));
+	border: 1px solid rgba(37, 99, 235, 0.14);
+}
+
+.expense-report-summary-card,
+.expense-report-totals-panel {
+	height: 100%;
+	padding: 1rem 1.1rem;
+	border: 1px solid rgba(148, 163, 184, 0.22);
+	border-radius: 1.25rem;
+	background: rgba(248, 250, 252, 0.72);
+}
+
+.expense-report-summary-grid {
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.expense-report-summary-item {
+	padding: 1rem 1.1rem;
+	border: 1px solid rgba(148, 163, 184, 0.18);
+	border-radius: 1rem;
+	background: rgba(255, 255, 255, 0.8);
+}
+
+.expense-report-total-pill {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.8rem 1rem;
+	border-radius: 0.9rem;
+	background: rgba(255, 255, 255, 0.88);
+	border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.expense-report-total-pill-label {
+	font-weight: 700;
+	letter-spacing: 0.04em;
+}
+
+.expense-report-table thead th {
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #64748b;
+	border-bottom-color: rgba(148, 163, 184, 0.18);
+}
+
+.expense-report-table tbody td {
+	padding-top: 0.95rem;
+	padding-bottom: 0.95rem;
+	border-color: rgba(148, 163, 184, 0.14);
+}
+
+@media (max-width: 991.98px) {
+	.expense-report-summary-card,
+	.expense-report-totals-panel {
+		border-radius: 1rem;
+	}
+
+	.expense-report-balance-banner {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+}

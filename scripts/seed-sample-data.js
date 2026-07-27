@@ -19,6 +19,11 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 const reportStatuses = ['not_submitted', 'submitted', 'processed'];
 const tourStatuses = ['not_started', 'in_progress', 'finished'];
 const currencies = ['USD', 'EUR', 'CHF'];
+const expenseReportCurrencyRows = [
+  { code: 'EUR', label: 'Euro' },
+  { code: 'CHF', label: 'Swiss franc' },
+  { code: 'USD', label: 'US dollar' },
+];
 const categories = ['Transport', 'Meals', 'Accommodation', 'Supplies', 'Parking', 'Fuel', 'Tickets'];
 const merchants = ['City Market', 'Transit Hub', 'Guest House', 'Road Stop', 'Cafe Central', 'Local Shuttle', 'Museum Desk'];
 const moneyInReasons = ['Cash float from admin', 'Client reimbursement', 'Refund received', 'Local cash received'];
@@ -250,6 +255,16 @@ async function upsertGuideProfile(user, userIndex) {
   }
 }
 
+async function upsertExpenseReportCurrencies() {
+  const { error } = await supabase.from('expense_report_line_currency').upsert(expenseReportCurrencyRows, {
+    onConflict: 'code',
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function getOrCreateExpenseReport(user, tour, userIndex, tourIndex) {
   const { data: existingReport, error: existingReportError } = await supabase
     .from('expense_reports')
@@ -385,6 +400,8 @@ async function main() {
   }
 
   const guides = await fetchOrCreateNewGuides();
+
+  await upsertExpenseReportCurrencies();
 
   if (guides.length === 0) {
     console.log('No guides could be prepared. Nothing to seed.');

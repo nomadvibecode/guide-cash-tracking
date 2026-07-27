@@ -2,9 +2,9 @@ import { renderHeader } from '../components/header/header.js';
 import { renderFooter } from '../components/footer/footer.js';
 import { renderDashboardPage } from '../pages/dashboard/dashboard.js';
 import { renderHomePage } from '../pages/home/home.js';
+import { renderExpenseReportsPage } from '../pages/expense-reports/expense-reports.js';
 import { renderLoginPage } from '../pages/login/login.js';
 import { renderNotFoundPage } from '../pages/not-found/not-found.js';
-import { renderRunningBalancePage } from '../pages/running-balance/running-balance.js';
 import { renderToursPage } from '../pages/tours/tours.js';
 
 const routes = [
@@ -29,9 +29,9 @@ const routes = [
     render: renderToursPage,
   },
   {
-    pattern: /^\/running-balance\/([^/]+)\/?$/,
-    title: ({ projectId }) => `Running Balance ${projectId}`,
-    render: renderRunningBalancePage,
+    pattern: /^\/expense-reports(?:\/([^/]+))?\/?$/,
+    title: 'Expense Reports',
+    render: renderExpenseReportsPage,
   },
 ];
 
@@ -48,12 +48,12 @@ function matchRoute(pathname) {
     const match = normalizedPath.match(route.pattern);
 
     if (match) {
-      const projectId = match[1] ? decodeURIComponent(match[1]) : undefined;
+      const reportId = match[1] ? decodeURIComponent(match[1]) : undefined;
 
       return {
         route,
         params: {
-          projectId,
+          reportId,
         },
       };
     }

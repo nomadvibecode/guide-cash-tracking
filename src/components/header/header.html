@@ -2,6 +2,9 @@
   <div class="container py-3">
     <nav class="navbar navbar-expand-lg navbar-light p-0">
       <a class="navbar-brand fw-bold" href="/" data-link="true">Guide Cash Tracking</a>
+      <div class="header-greeting d-none d-lg-flex justify-content-center align-items-center flex-grow-1 px-3" data-header-greeting hidden>
+        <span class="header-greeting-text fw-semibold text-secondary" data-header-greeting-text></span>
+      </div>
       <button
         class="navbar-toggler"
         type="button"
@@ -15,10 +18,7 @@
       </button>
       <div class="collapse navbar-collapse" id="primaryNavigation">
         <ul class="navbar-nav ms-auto gap-lg-2 mt-3 mt-lg-0">
-          <li class="nav-item" data-nav-item>
-            <a class="nav-link" href="/" data-link="true" data-nav-link>Home</a>
-          </li>
-          <li class="nav-item">
+          <li class="nav-item" data-auth-link-item>
             <a class="nav-link" href="/login" data-link="true" data-nav-link data-auth-link>Login / Register</a>
           </li>
           <li class="nav-item" data-nav-item>
@@ -28,7 +28,7 @@
             <a class="nav-link" href="/tours" data-link="true" data-nav-link>Tours</a>
           </li>
           <li class="nav-item" data-nav-item>
-            <a class="nav-link" href="/running-balance/42" data-link="true" data-nav-link>Running Balance</a>
+            <a class="nav-link" href="/expense-reports" data-link="true" data-nav-link>Expense Reports</a>
           </li>
           <li class="nav-item d-none" data-logged-in-only>
             <button class="nav-link nav-link-button" type="button" data-logout-button>Logout</button>

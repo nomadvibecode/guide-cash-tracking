@@ -2,7 +2,7 @@ import './running-balance.css';
 
 import runningBalanceFragment from './running-balance.html?raw';
 
-export async function renderRunningBalancePage(container, params = {}) {
+export async function renderExpenseReportsPage(container, params = {}) {
   container.innerHTML = runningBalanceFragment;
 
   const projectId = params.projectId ?? 'unknown';

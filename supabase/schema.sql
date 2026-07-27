@@ -78,6 +78,20 @@ create table public.expense_report_lines (
 
 comment on table public.expense_report_lines is 'Individual expense rows within an expense report.';
 
+create table public.expense_report_line_currency (
+  code char(3) primary key,
+  label text not null
+);
+
+comment on table public.expense_report_line_currency is 'Allowed currencies for expense report line items.';
+
+alter table public.expense_report_lines
+  add constraint expense_report_lines_currency_fkey
+  foreign key (currency)
+  references public.expense_report_line_currency(code)
+  on update cascade
+  on delete restrict;
+
 create table public.expense_report_attachments (
   id uuid primary key default gen_random_uuid(),
   expense_report_id uuid not null references public.expense_reports(id) on delete cascade,
@@ -117,5 +131,6 @@ create index tour_guides_guide_id_idx on public.tour_guides (guide_id);
 -- Tour guides: read and manage only through authenticated guide sessions; each tour is capped at 3 guide rows.
 -- Expense reports: read publicly for demo usage, add/edit/delete only for the owning guide.
 -- Expense report lines: read publicly for demo usage, add/edit/delete only through their parent report.
+-- Expense report line currencies: read publicly for demo usage and used as the lookup table for line currencies.
 -- Expense report attachments: read publicly for demo usage, add/edit/delete only through their parent report.
 -- The dashboard overview view derives guide/tour/balance totals in Postgres.

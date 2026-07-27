@@ -569,7 +569,7 @@ function renderReportCard(report) {
             <div class="dashboard-summary-value">${formatMoney(report.money_out_total, report.currency)}</div>
           </div>
           <div class="dashboard-summary-item">
-            <div class="dashboard-summary-label">Running balance</div>
+            <div class="dashboard-summary-label">Expense Reports</div>
             <div class="dashboard-summary-value">${formatMoney(report.running_balance ?? report.amount ?? lineTotal, report.currency)}</div>
           </div>
           <div class="dashboard-summary-item">

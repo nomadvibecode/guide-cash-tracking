@@ -58,8 +58,15 @@ This is the simplified first-pass Supabase schema for Guide Cash Tracking.
 - `direction`:
   - `money_in`
   - `money_out`
-- `currency`
+- `currency` -> `expense_report_line_currency.code`
 - `amount`
+
+### Expense report line currencies
+- `code`:
+  - `EUR`
+  - `CHF`
+  - `USD`
+- `label`
 
 ### Expense report attachments
 - `expense_report_id` -> `expense_reports.id`
@@ -79,6 +86,7 @@ erDiagram
   tours ||--o{ expense_reports : contains
   auth_users ||--o{ expense_reports : submits
   expense_reports ||--o{ expense_report_lines : includes
+  expense_report_line_currency ||--o{ expense_report_lines : categorizes
   expense_reports ||--o{ expense_report_attachments : has
 
   auth_users {
@@ -132,8 +140,13 @@ erDiagram
     text description
     text category
     cash_transaction_direction direction
-    char(3) currency
+    char(3) currency FK
     numeric amount
+  }
+
+  expense_report_line_currency {
+    char(3) code PK
+    text label
   }
 
   expense_report_attachments {
@@ -159,6 +172,7 @@ erDiagram
 - Tour guide assignments are limited to 3 guide rows per tour.
 - Expense reports are public-read and add/update/delete only for the owning guide.
 - Expense report lines are public-read and add/update/delete only for the owning guide through the parent report.
+- Expense report line currencies are public-read and used as the lookup table for line items.
 - Expense report attachments are public-read and add/update/delete only for the owning guide through the parent report.
 - Guide profiles are public-read only for demo rendering.
 - Table access is limited to authenticated users.

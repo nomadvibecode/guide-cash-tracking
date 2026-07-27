@@ -5,6 +5,19 @@
   backdrop-filter: blur(18px);
 }
 
+.site-header .navbar {
+  position: relative;
+}
+
+.header-greeting {
+  min-width: 0;
+}
+
+.header-greeting-text {
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
 .site-header .nav-link {
   border-radius: 999px;
   padding-inline: 0.9rem;
