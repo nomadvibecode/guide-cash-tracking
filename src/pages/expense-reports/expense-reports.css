@@ -13,6 +13,14 @@
 	border: 1px solid rgba(37, 99, 235, 0.14);
 }
 
+.expense-report-balance-side {
+	height: 100%;
+	align-items: flex-start;
+	justify-content: flex-start;
+	width: 100%;
+	max-width: 40rem;
+}
+
 .expense-report-summary-card,
 .expense-report-totals-panel {
 	height: 100%;
@@ -33,6 +41,34 @@
 	border: 1px solid rgba(148, 163, 184, 0.18);
 	border-radius: 1rem;
 	background: rgba(255, 255, 255, 0.8);
+}
+
+.expense-report-summary-item-wide {
+	width: 100%;
+}
+
+.expense-report-summary-item-compact {
+	width: fit-content;
+	height: auto;
+	min-width: 10rem;
+}
+
+.expense-report-entry-grid {
+	display: grid;
+	gap: 0.85rem;
+}
+
+.expense-report-entry-cell {
+	min-width: 0;
+}
+
+.expense-report-entry-action {
+	display: grid;
+	align-self: end;
+}
+
+.expense-report-entry-action .btn {
+	width: 100%;
 }
 
 .expense-report-total-pill {
@@ -65,10 +101,34 @@
 	border-color: rgba(148, 163, 184, 0.14);
 }
 
+.expense-report-row-money-in td {
+	background: rgba(22, 163, 74, 0.06);
+}
+
+.expense-report-amount-in {
+	color: #198754;
+	font-weight: 700;
+}
+
+.expense-report-amount-out {
+	color: #0f172a;
+}
+
+@media (min-width: 992px) {
+	.expense-report-entry-grid {
+		grid-template-columns: minmax(9rem, 1fr) minmax(10rem, 1.1fr) minmax(20rem, 2.5fr) minmax(8rem, 0.9fr) minmax(9rem, 1fr) minmax(7rem, 0.8fr);
+		align-items: end;
+	}
+}
+
 @media (max-width: 991.98px) {
 	.expense-report-summary-card,
 	.expense-report-totals-panel {
 		border-radius: 1rem;
+	}
+
+	.expense-report-balance-side {
+		max-width: none;
 	}
 
 	.expense-report-balance-banner {

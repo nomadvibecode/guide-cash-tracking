@@ -8,10 +8,81 @@ function requireSupabaseClient() {
   return supabase;
 }
 
+function formatIsoDate(value) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+async function ensureExpenseReportsForAssignedTours(client, guideId) {
+  const { data: assignments, error: assignmentsError } = await client
+    .from('tour_guides')
+    .select(`
+      tour_id,
+      tours (
+        tour_name,
+        start_date
+      )
+    `)
+    .eq('guide_id', guideId);
+
+  if (assignmentsError) {
+    throw assignmentsError;
+  }
+
+  const assignedTours = assignments ?? [];
+
+  if (assignedTours.length === 0) {
+    return;
+  }
+
+  const assignedTourIds = [...new Set(assignedTours.map((assignment) => assignment.tour_id).filter(Boolean))];
+
+  if (assignedTourIds.length === 0) {
+    return;
+  }
+
+  const { data: existingReports, error: existingReportsError } = await client
+    .from('expense_reports')
+    .select('tour_id')
+    .eq('guide_id', guideId)
+    .in('tour_id', assignedTourIds);
+
+  if (existingReportsError) {
+    throw existingReportsError;
+  }
+
+  const existingTourIds = new Set((existingReports ?? []).map((report) => report.tour_id));
+  const missingAssignments = assignedTours.filter((assignment) => !existingTourIds.has(assignment.tour_id));
+
+  if (missingAssignments.length === 0) {
+    return;
+  }
+
+  const now = formatIsoDate(new Date());
+  const reportsToInsert = missingAssignments.map((assignment) => ({
+    tour_id: assignment.tour_id,
+    guide_id: guideId,
+    transaction_date: assignment.tours?.start_date ?? now,
+    transaction_memo: `Expense report for ${assignment.tours?.tour_name ?? 'tour'}`,
+    currency: 'EUR',
+    amount: 0,
+    status: 'not_submitted',
+  }));
+
+  const { error: insertReportsError } = await client
+    .from('expense_reports')
+    .insert(reportsToInsert);
+
+  if (insertReportsError) {
+    throw insertReportsError;
+  }
+}
+
 export async function loadExpenseReportsPageData(guideId) {
   const client = requireSupabaseClient();
 
-  const [reportsResult, linesResult, currenciesResult] = await Promise.all([
+  await ensureExpenseReportsForAssignedTours(client, guideId);
+
+  const [reportsResult, currenciesResult] = await Promise.all([
     client
       .from('expense_reports')
       .select(`
@@ -24,24 +95,37 @@ export async function loadExpenseReportsPageData(guideId) {
         status,
         created_at,
         tours (
-          tour_name
+          tour_name,
+          start_date,
+          end_date
         )
       `)
       .eq('guide_id', guideId)
       .order('transaction_date', { ascending: false })
       .order('created_at', { ascending: false }),
     client
-      .from('expense_report_lines')
-      .select('id, expense_report_id, line_date, description, category, currency, amount, created_at')
-      .order('line_date', { ascending: true })
-      .order('created_at', { ascending: true }),
-    client
       .from('expense_report_line_currency')
       .select('code, label')
       .order('code', { ascending: true }),
   ]);
 
-  const firstError = reportsResult.error ?? linesResult.error ?? currenciesResult.error;
+  const reportIds = (reportsResult.data ?? []).map((report) => report.id);
+  let linesData = [];
+  let linesError = null;
+
+  if (reportIds.length > 0) {
+    const linesResult = await client
+      .from('expense_report_lines')
+      .select('id, expense_report_id, line_date, description, category, direction, currency, amount, created_at')
+      .in('expense_report_id', reportIds)
+      .order('line_date', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    linesData = linesResult.data ?? [];
+    linesError = linesResult.error;
+  }
+
+  const firstError = reportsResult.error ?? linesError ?? currenciesResult.error;
 
   if (firstError) {
     throw firstError;
@@ -49,7 +133,7 @@ export async function loadExpenseReportsPageData(guideId) {
 
   const linesByReportId = new Map();
 
-  for (const line of linesResult.data ?? []) {
+  for (const line of linesData) {
     const reportLines = linesByReportId.get(line.expense_report_id) ?? [];
     reportLines.push(line);
     linesByReportId.set(line.expense_report_id, reportLines);

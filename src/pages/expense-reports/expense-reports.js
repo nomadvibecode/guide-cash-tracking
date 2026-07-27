@@ -150,11 +150,16 @@ function renderReportOptions(reports, selectedReportId) {
   return reports
     .map((report) => {
       const tourName = report.tours?.tour_name ?? 'Expense report';
+      const tourStartDate = report.tours?.start_date;
+      const tourEndDate = report.tours?.end_date;
+      const tourRange = tourStartDate && tourEndDate
+        ? `${formatDisplayDate(tourStartDate)} - ${formatDisplayDate(tourEndDate)}`
+        : formatDisplayDate(report.transaction_date);
       const isSelected = report.id === selectedReportId;
 
       return `
         <option value="${report.id}" ${isSelected ? 'selected' : ''}>
-          ${tourName} · ${formatDisplayDate(report.transaction_date)}
+          ${tourName} · ${tourRange}
         </option>
       `;
     })
@@ -181,6 +186,12 @@ function renderTransactionTypeLabel(transactionType) {
   return getSelectedTransactionType(transactionType)?.label ?? 'Expense';
 }
 
+function transactionToneClass(line) {
+  return line.direction === 'money_in'
+    ? 'bg-success-subtle text-success border-success-subtle'
+    : 'bg-danger-subtle text-danger border-danger-subtle';
+}
+
 function renderCurrencyTotals(totals) {
   if (totals.size === 0) {
     return '<p class="mb-0 text-secondary">No expense lines added yet.</p>';
@@ -198,12 +209,12 @@ function renderCurrencyTotals(totals) {
 
 function renderLedgerSummary(totals) {
   return `
-    <div class="expense-report-balance-banner mb-4">
+    <div class="expense-report-balance-banner expense-report-balance-side">
       <div>
         <div class="text-secondary small text-uppercase fw-semibold mb-1">Ledger balance</div>
         <div class="h5 fw-semibold mb-0">Money in adds, expenses subtract</div>
       </div>
-      <div class="d-flex flex-wrap gap-2 justify-content-end">
+      <div class="d-flex flex-column gap-2 w-100 mt-3">
         ${renderCurrencyTotals(totals)}
       </div>
     </div>
@@ -221,12 +232,12 @@ function renderLineRows(lines) {
 
   return lines
     .map((line) => `
-      <tr data-line-id="${line.id}">
+      <tr data-line-id="${line.id}" class="${line.direction === 'money_in' ? 'expense-report-row-money-in' : ''}">
         <td>${formatDisplayDate(line.line_date)}</td>
-        <td><span class="badge rounded-pill border bg-light text-dark border-light-subtle">${renderTransactionTypeLabel(getTransactionTypeFromLine(line))}</span></td>
+        <td><span class="badge rounded-pill border ${transactionToneClass(line)}">${renderTransactionTypeLabel(getTransactionTypeFromLine(line))}</span></td>
         <td>${line.description}</td>
         <td><span class="badge rounded-pill border bg-light text-dark border-light-subtle">${line.currency}</span></td>
-        <td class="text-end fw-semibold">${formatCurrencyAmount(line.amount, line.currency)}</td>
+        <td class="text-end fw-semibold ${line.direction === 'money_in' ? 'expense-report-amount-in' : 'expense-report-amount-out'}">${formatCurrencyAmount(line.amount, line.currency)}</td>
         <td class="text-end">
           <div class="d-inline-flex gap-2">
             <button class="btn btn-sm btn-outline-secondary" type="button" data-edit-line data-line-id="${line.id}">Edit</button>
@@ -299,7 +310,12 @@ function renderExpenseReportsMarkup({ reports, currencies, selectedReportId, edi
   const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
   const editingLine = selectedReport?.lines.find((line) => line.id === editingLineId) ?? null;
   const totals = buildCurrencyTotals(selectedReport?.lines ?? []);
-  const selectedCurrencies = [...totals.keys()];
+  const selectedTourName = selectedReport?.tours?.tour_name ?? 'Expense report';
+  const selectedTourStartDate = selectedReport?.tours?.start_date;
+  const selectedTourEndDate = selectedReport?.tours?.end_date;
+  const selectedTourRange = selectedTourStartDate && selectedTourEndDate
+    ? `${formatDisplayDate(selectedTourStartDate)} - ${formatDisplayDate(selectedTourEndDate)}`
+    : (selectedReport ? formatDisplayDate(selectedReport.transaction_date) : '');
   const reportSelectMarkup = renderReportOptions(reports, selectedReport?.id ?? selectedReportId);
   const currencySelectMarkup = renderCurrencyOptions(currencies, selectedReport?.currency);
   const transactionTypeSelectMarkup = renderTransactionTypeOptions('expense');
@@ -314,53 +330,34 @@ function renderExpenseReportsMarkup({ reports, currencies, selectedReportId, edi
         </div>
 
         <div class="page-panel expense-report-panel p-4 p-lg-5">
-          ${renderLedgerSummary(totals)}
-
           <div class="row g-4 align-items-start">
-            <div class="col-lg-8">
+            <div class="col-lg-6">
               <label class="form-label" for="expenseReportSelect">Select report</label>
               <select class="form-select form-select-lg" id="expenseReportSelect" data-expense-report-select>
                 ${reportSelectMarkup}
               </select>
+              <div class="mt-2 text-secondary small">
+                <span class="fw-semibold text-dark">Selected tour:</span> ${selectedTourName} · ${selectedTourRange}
+              </div>
             </div>
 
-            <div class="col-lg-4">
-              <div class="expense-report-summary-card">
-                <div class="text-secondary small text-uppercase fw-semibold mb-1">Selected report</div>
-                <div class="fw-semibold mb-1">${selectedReport?.tours?.tour_name ?? 'Expense report'}</div>
-                <div class="text-secondary small">${selectedReport ? formatDisplayDate(selectedReport.transaction_date) : ''}</div>
-              </div>
+            <div class="col-lg-6 d-flex justify-content-lg-end">
+              ${renderLedgerSummary(totals)}
             </div>
           </div>
 
-          <div class="row g-4 mt-1">
+          <div class="row g-4 mt-1 align-items-start">
             <div class="col-lg-8">
-              <div class="expense-report-summary-grid mt-2">
-                <div class="expense-report-summary-item">
-                  <span class="text-secondary small text-uppercase fw-semibold">Memo</span>
-                  <div class="fw-semibold">${selectedReport?.transaction_memo ?? 'No memo'}</div>
-                </div>
-                <div class="expense-report-summary-item">
-                  <span class="text-secondary small text-uppercase fw-semibold">Lines</span>
-                  <div class="fw-semibold">${selectedReport?.lines.length ?? 0}</div>
-                </div>
-                <div class="expense-report-summary-item">
-                  <span class="text-secondary small text-uppercase fw-semibold">Currencies</span>
-                  <div class="d-flex flex-wrap gap-2 mt-2">
-                    ${selectedCurrencies.length > 0
-                      ? selectedCurrencies.map((code) => `<span class="badge rounded-pill border bg-light text-dark border-light-subtle">${code}</span>`).join('')
-                      : '<span class="text-secondary">None yet</span>'}
-                  </div>
-                </div>
+              <div class="expense-report-summary-item expense-report-summary-item-wide">
+                <span class="text-secondary small text-uppercase fw-semibold">Memo</span>
+                <div class="fw-semibold">${selectedReport?.transaction_memo ?? 'No memo'}</div>
               </div>
             </div>
 
-            <div class="col-lg-4">
-              <div class="expense-report-totals-panel">
-                <div class="text-secondary small text-uppercase fw-semibold mb-2">Selected currency balances</div>
-                <div class="d-flex flex-column gap-2">
-                  ${renderCurrencyTotals(totals)}
-                </div>
+            <div class="col-lg-4 d-flex align-items-start justify-content-lg-end">
+              <div class="expense-report-summary-item expense-report-summary-item-compact">
+                <span class="text-secondary small text-uppercase fw-semibold">Transactions</span>
+                <div class="fw-semibold">${selectedReport?.lines.length ?? 0}</div>
               </div>
             </div>
           </div>
@@ -368,35 +365,33 @@ function renderExpenseReportsMarkup({ reports, currencies, selectedReportId, edi
           ${renderEditLinePanel(editingLine, currencies)}
 
           <form class="mt-4" data-expense-form>
-            <div class="row g-3 align-items-end">
-              <div class="col-md-3">
+            <div class="expense-report-entry-grid">
+              <div class="expense-report-entry-cell">
                 <label class="form-label" for="expenseDate">Date</label>
                 <input class="form-control" id="expenseDate" name="expenseDate" type="date" value="${new Date().toISOString().slice(0, 10)}" required />
               </div>
-              <div class="col-md-3">
+              <div class="expense-report-entry-cell">
                 <label class="form-label" for="expenseType">Type</label>
                 <select class="form-select" id="expenseType" name="expenseType" required>
                   ${transactionTypeSelectMarkup}
                 </select>
               </div>
-              <div class="col-md-2">
+              <div class="expense-report-entry-cell">
+                <label class="form-label" for="expenseMemo">Memo</label>
+                <input class="form-control" id="expenseMemo" name="expenseMemo" type="text" maxlength="120" placeholder="Lunch with clients" required />
+              </div>
+              <div class="expense-report-entry-cell">
                 <label class="form-label" for="expenseCurrency">Currency</label>
                 <select class="form-select" id="expenseCurrency" name="expenseCurrency" required>
                   ${currencySelectMarkup}
                 </select>
               </div>
-              <div class="col-md-2">
+              <div class="expense-report-entry-cell">
                 <label class="form-label" for="expenseAmount">Amount</label>
                 <input class="form-control" id="expenseAmount" name="expenseAmount" type="number" min="0" step="0.01" placeholder="0.00" required />
               </div>
-              <div class="col-md-2 d-grid">
+              <div class="expense-report-entry-cell expense-report-entry-action">
                 <button class="btn btn-primary" type="submit">Add</button>
-              </div>
-            </div>
-            <div class="row g-3 mt-0">
-              <div class="col-12">
-                <label class="form-label" for="expenseMemo">Memo</label>
-                <input class="form-control" id="expenseMemo" name="expenseMemo" type="text" maxlength="120" placeholder="Lunch with clients" required />
               </div>
             </div>
             <div class="mt-3 text-secondary small" data-expense-status>Each expense line keeps its own currency, so one report can mix EUR, CHF, and USD entries.</div>
@@ -407,11 +402,11 @@ function renderExpenseReportsMarkup({ reports, currencies, selectedReportId, edi
               <thead>
                 <tr>
                   <th style="width: 16rem;">Date</th>
-                  <th style="width: 12rem;">Type</th>
-                  <th>Memo</th>
-                  <th style="width: 9rem;">Currency</th>
-                  <th class="text-end" style="width: 11rem;">Amount</th>
-                  <th class="text-end" style="width: 11rem;">Actions</th>
+                  <th style="width: 10rem;">Type</th>
+                  <th style="width: 28rem;">Memo</th>
+                  <th style="width: 7rem;">Currency</th>
+                  <th class="text-end" style="width: 9rem;">Amount</th>
+                  <th class="text-end" style="width: 10rem;">Actions</th>
                 </tr>
               </thead>
               <tbody>

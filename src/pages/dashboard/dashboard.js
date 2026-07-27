@@ -105,20 +105,15 @@ function buildTourPieData(tours) {
 }
 
 function buildCurrencySummaries(reports) {
-  const today = new Date().toISOString().slice(0, 10);
   const summariesByCurrency = new Map();
 
   for (const report of reports) {
     for (const line of report.lines ?? []) {
-      if (line.line_date > today) {
-        continue;
-      }
-
       const currency = normalizeCurrencyCode(line.currency ?? report.currency ?? 'USD');
       const currentSummary = summariesByCurrency.get(currency) ?? {
         currency,
         moneyIn: 0,
-        expenses: 0,
+        moneyOut: 0,
         transactionCount: 0,
       };
 
@@ -128,7 +123,7 @@ function buildCurrencySummaries(reports) {
       if (line.direction === 'money_in') {
         currentSummary.moneyIn += amount;
       } else {
-        currentSummary.expenses += amount;
+        currentSummary.moneyOut += amount;
       }
 
       summariesByCurrency.set(currency, currentSummary);
@@ -139,99 +134,57 @@ function buildCurrencySummaries(reports) {
 }
 
 function renderTourPieChart(tours, reports) {
-  const { total, finished, remaining, finishedShare } = buildTourPieData(tours);
-  const angle = `${(finishedShare * 360).toFixed(2)}deg`;
+  const groupedTours = splitToursByStatus(tours);
+  const currencySummaries = buildCurrencySummaries(reports);
+  const currencyCardsMarkup = currencySummaries
+    .map((summary) => {
+      const balance = summary.moneyIn - summary.moneyOut;
+
+      return `
+        <article class="dashboard-total-card dashboard-total-card-neutral">
+          <div class="dashboard-summary-label mb-2">${summary.currency} overview</div>
+          <div class="dashboard-total-meta mb-2">${summary.transactionCount} transactions</div>
+          <div class="dashboard-total-metric-row">
+            <span class="dashboard-total-metric-label">Money in</span>
+            <strong class="dashboard-total-metric-value dashboard-total-metric-value-in">${formatMoney(summary.moneyIn, summary.currency)}</strong>
+          </div>
+          <div class="dashboard-total-metric-row">
+            <span class="dashboard-total-metric-label">Money out</span>
+            <strong class="dashboard-total-metric-value dashboard-total-metric-value-out">${formatMoney(summary.moneyOut, summary.currency)}</strong>
+          </div>
+          <div class="dashboard-total-metric-row dashboard-total-metric-row-balance">
+            <span class="dashboard-total-metric-label">Balance</span>
+            <strong class="dashboard-total-metric-value ${balance >= 0 ? 'dashboard-total-metric-value-in' : 'dashboard-total-metric-value-out'}">${formatMoney(balance, summary.currency)}</strong>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+
+  const toursOverviewCard = `
+    <article class="dashboard-total-card dashboard-total-card-neutral">
+      <div class="dashboard-summary-label mb-2">Tours overview</div>
+      <div class="dashboard-total-value mb-1">${tours.length}</div>
+      <div class="dashboard-total-meta mb-3">Total tours assigned to this guide</div>
+      <div class="d-flex flex-wrap gap-2">
+        <span class="badge rounded-pill border bg-light text-dark border-light-subtle">Not started: ${groupedTours.not_started.length}</span>
+        <span class="badge rounded-pill border bg-light text-dark border-light-subtle">In progress: ${groupedTours.in_progress.length}</span>
+        <span class="badge rounded-pill border bg-light text-dark border-light-subtle">Finished: ${groupedTours.finished.length}</span>
+      </div>
+    </article>
+  `;
 
   return `
     <section class="page-section pt-0">
       <div class="container">
-        <div class="row g-4 align-items-stretch mb-4">
-          <div class="col-12 col-xl-5">
-            <div class="page-panel p-4 p-lg-5 h-100 dashboard-insight-card">
-              <p class="page-kicker mb-2">Tour overview</p>
-              <h2 class="h4 mb-3">Total tours vs tours finished</h2>
-              <div class="dashboard-pie-wrap">
-                <div class="dashboard-pie-chart" style="--dashboard-chart-angle: ${angle};">
-                  <div class="dashboard-pie-chart-center">
-                    <div class="dashboard-pie-chart-value">${finished}/${total}</div>
-                    <div class="dashboard-pie-chart-label text-secondary">Finished</div>
-                  </div>
-                </div>
-                <div class="dashboard-pie-legend">
-                  <div class="dashboard-pie-legend-item">
-                    <span class="dashboard-pie-dot is-finished"></span>
-                    <div>
-                      <div class="dashboard-pie-legend-label">Finished tours</div>
-                      <div class="dashboard-pie-legend-value">${finished}</div>
-                    </div>
-                  </div>
-                  <div class="dashboard-pie-legend-item">
-                    <span class="dashboard-pie-dot is-remaining"></span>
-                    <div>
-                      <div class="dashboard-pie-legend-label">Remaining tours</div>
-                      <div class="dashboard-pie-legend-value">${remaining}</div>
-                    </div>
-                  </div>
-                  <div class="dashboard-pie-legend-item dashboard-pie-legend-total">
-                    <div>
-                      <div class="dashboard-pie-legend-label">Total tours</div>
-                      <div class="dashboard-pie-legend-value">${total}</div>
-                    </div>
-                    <span class="badge rounded-pill border bg-light text-dark border-light-subtle">${Math.round(finishedShare * 100)}%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div class="page-panel p-4 p-lg-5 mb-4 dashboard-insight-card">
+          <p class="page-kicker mb-2">Dashboard totals</p>
+          <h2 class="h4 mb-3">Tours, status, and cash flow totals</h2>
+          <p class="text-secondary mb-4">Cards summarize all assigned tours and all money-in/money-out transactions for this guide.</p>
+          <div class="dashboard-total-grid">
+            ${toursOverviewCard}
+            ${currencyCardsMarkup || '<article class="dashboard-total-card dashboard-total-card-neutral"><div class="dashboard-summary-label mb-2">Currencies</div><div class="dashboard-total-meta">No transactions recorded yet.</div></article>'}
           </div>
-
-          <div class="col-12 col-xl-7">
-            <div class="page-panel p-4 p-lg-5 h-100 dashboard-insight-card">
-              <p class="page-kicker mb-2">Currencies</p>
-              <h2 class="h4 mb-3">Money-in vs expenses by currency</h2>
-              <p class="text-secondary mb-4">Totals are calculated from your report lines up to today, so guides with multiple currencies see each one separately.</p>
-              <div class="dashboard-currency-grid">
-                ${buildCurrencySummaries(reports)
-                  .map(
-                    (summary) => `
-                      <article class="dashboard-currency-card">
-                        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                          <div>
-                            <p class="page-kicker mb-2">${summary.currency}</p>
-                            <h3 class="h5 mb-0">${summary.transactionCount} transactions</h3>
-                          </div>
-                          <span class="badge rounded-pill border bg-light text-dark border-light-subtle">${summary.currency}</span>
-                        </div>
-                        <div class="dashboard-currency-metrics">
-                          <div>
-                            <div class="dashboard-summary-label mb-1">Money in</div>
-                            <div class="dashboard-currency-value text-success">${formatMoney(summary.moneyIn, summary.currency)}</div>
-                          </div>
-                          <div>
-                            <div class="dashboard-summary-label mb-1">Expenses</div>
-                            <div class="dashboard-currency-value text-danger">${formatMoney(summary.expenses, summary.currency)}</div>
-                          </div>
-                        </div>
-                        <div class="dashboard-currency-net mt-3">
-                          <span class="dashboard-summary-label">Net</span>
-                          <span class="dashboard-currency-value">${formatMoney(summary.moneyIn - summary.expenses, summary.currency)}</span>
-                        </div>
-                      </article>
-                    `,
-                  )
-                  .join('') || '<div class="text-secondary">No transactions have been recorded yet.</div>'}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        ${session?.user ? renderToursBoard(assignedTours, currentGuideName) : ''}
-
-        ${session?.user ? renderTransactionPanel(reports) : ''}
-
-        ${session?.user && !hasReports ? renderNoToursState() : ''}
-
-        <div class="dashboard-report-list">
-          ${reports.map(renderReportCard).join('')}
         </div>
       </div>
     </section>
@@ -477,7 +430,7 @@ function renderTransactionPanel(reports) {
             </div>
             <div class="col-6 col-lg-2">
               <label class="form-label" for="transactionCurrency">Currency</label>
-              <select class="form-select form-select-lg" id="transactionCurrency" name="currency" disabled>
+              <select class="form-select form-select-lg" id="transactionCurrency" name="currency">
                 <option value="USD" ${defaultCurrency === 'USD' ? 'selected' : ''}>USD</option>
                 <option value="EUR" ${defaultCurrency === 'EUR' ? 'selected' : ''}>EUR</option>
                 <option value="CHF" ${defaultCurrency === 'CHF' ? 'selected' : ''}>CHF</option>
@@ -530,7 +483,7 @@ function renderReportCard(report) {
           <td>${line.currency ?? report.currency}</td>
           <td>${line.description}</td>
           <td>${line.category}</td>
-          <td class="text-end">${formatMoney(line.amount, line.currency ?? report.currency)}</td>
+          <td class="text-end ${line.direction === 'money_in' ? 'dashboard-line-amount-in' : 'dashboard-line-amount-out'}">${formatMoney(line.amount, line.currency ?? report.currency)}</td>
         </tr>
       `,
     )
