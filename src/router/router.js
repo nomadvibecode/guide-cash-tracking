@@ -7,6 +7,7 @@ import { renderLoginPage } from '../pages/login/login.js';
 import { renderNotFoundPage } from '../pages/not-found/not-found.js';
 import { renderToursPage } from '../pages/tours/tours.js';
 import { renderMyProfilePage } from '../pages/my-profile/my-profile.js';
+import { renderAdminPage } from '../pages/admin/admin.js';
 
 const routes = [
   {
@@ -38,6 +39,11 @@ const routes = [
     pattern: /^\/my-profile\/?$/,
     title: 'My Profile',
     render: renderMyProfilePage,
+  },
+  {
+    pattern: /^\/admin\/?$/,
+    title: 'Admin',
+    render: renderAdminPage,
   },
 ];
 

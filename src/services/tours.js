@@ -118,3 +118,9 @@ export async function joinTour({ tourId, guideId }) {
 
   return { joined: true };
 }
+
+export async function getAllTours() {
+  const { data, error } = await supabase.from('tours').select('*');
+  if (error) throw error;
+  return data;
+}

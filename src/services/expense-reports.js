@@ -301,3 +301,9 @@ export async function deleteExpenseReportLine({ lineId, reportId }) {
 export function getTransactionTypeFromLine(line) {
   return resolveTransactionTypeFromLine(line);
 }
+
+export async function getAllExpenseReports() {
+    const { data, error } = await supabase.from('expense_reports').select('*');
+    if (error) throw error;
+    return data;
+}

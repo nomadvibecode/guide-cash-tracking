@@ -1,4 +1,4 @@
-import { getCurrentSession, signOutCurrentUser } from '../../services/auth.js';
+import { getCurrentSession, signOutCurrentUser, checkAdmin } from '../../services/auth.js';
 import { supabase } from '../../services/supabase-client.js';
 
 import './header.css';
@@ -52,14 +52,22 @@ export async function renderHeader(container, pathname) {
   const navItems = container.querySelectorAll('[data-nav-item]');
   const loggedInItem = container.querySelector('[data-logged-in-only]');
   const logoutButton = container.querySelector('[data-logout-button]');
+  const adminLinkItem = container.querySelector('[data-admin-link-item]');
 
   try {
     const session = await getCurrentSession();
 
     if (session) {
-      const guideName = await getSignedInGuideName(session);
+      const [guideName, isAdmin] = await Promise.all([
+        getSignedInGuideName(session),
+        checkAdmin(),
+      ]);
 
       navItems.forEach((item) => item.classList.remove('d-none'));
+
+      if (isAdmin && adminLinkItem) {
+        adminLinkItem.classList.remove('d-none');
+      }
 
       if (authLink) {
         authLink.setAttribute('href', '/');

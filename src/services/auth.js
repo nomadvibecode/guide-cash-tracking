@@ -42,3 +42,12 @@ export async function signOutCurrentUser() {
 
   return client.auth.signOut();
 }
+
+export async function checkAdmin() {
+  const { data, error } = await supabase.rpc('has_role', { role_name: 'admin' });
+  if (error) {
+    console.error('Error checking admin role:', error);
+    return false;
+  }
+  return data;
+}

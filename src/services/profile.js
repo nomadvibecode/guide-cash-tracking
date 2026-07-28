@@ -147,3 +147,9 @@ export async function deleteProfilePicture() {
         throw updateError;
     }
 }
+
+export async function getAllProfiles() {
+    const { data, error } = await supabase.from('guide_profiles').select('*');
+    if (error) throw error;
+    return data;
+}
