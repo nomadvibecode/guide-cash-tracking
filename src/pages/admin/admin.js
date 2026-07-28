@@ -7,7 +7,7 @@ import {
   deleteTour,
   allocateGuidesToTour,
 } from '../../services/tours.js';
-import { getAllProfiles } from '../../services/profile.js';
+import { getAllProfiles, adminUpdateProfile, deleteProfile } from '../../services/profile.js';
 import { getAllExpenseReports } from '../../services/expense-reports.js';
 import { checkAdmin } from '../../services/auth.js';
 import { Modal } from 'bootstrap';
@@ -52,6 +52,18 @@ export async function renderAdminPage(container) {
   const guestCountInput = document.getElementById('guest-count');
   const allocatedGuidesSelect = document.getElementById('allocated-guides');
   const addTourButton = document.getElementById('add-tour-button');
+
+  // Profile modal elements
+  const profileModalElement = document.getElementById('profile-modal');
+  const profileModal = new Modal(profileModalElement);
+  const profileForm = document.getElementById('profile-form');
+  const profileIdInput = document.getElementById('profile-id');
+  const profileEmailInput = document.getElementById('profile-email-input');
+  const profileFirstNameInput = document.getElementById('profile-first-name');
+  const profileLastNameInput = document.getElementById('profile-last-name');
+  const profileDisplayNameInput = document.getElementById('profile-display-name-input');
+  const profilePhoneInput = document.getElementById('profile-phone');
+  const profileNotesInput = document.getElementById('profile-notes');
 
   let cachedTours = [];
   let cachedProfiles = [];
@@ -199,26 +211,102 @@ export async function renderAdminPage(container) {
     }
   });
 
-  // Load Guide Profiles
-  try {
-    cachedProfiles = await getAllProfiles();
-    profilesLoading.style.display = 'none';
-
+  function renderProfilesTable() {
     if (cachedProfiles && cachedProfiles.length > 0) {
       profilesList.innerHTML = cachedProfiles.map(profile => `
         <tr>
           <td>${profile.display_name || 'N/A'}</td>
           <td>${profile.email || 'N/A'}</td>
-          <td>${profile.phone || 'N/A'}</td>
-          <td>${profile.bio || 'N/A'}</td>
+          <td>${profile.phone_number || 'N/A'}</td>
+          <td>${profile.notes || 'N/A'}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-secondary edit-profile-button" data-profile-id="${profile.id}">Edit</button>
+            <button type="button" class="btn btn-sm btn-outline-danger delete-profile-button" data-profile-id="${profile.id}">Delete</button>
+          </td>
         </tr>
       `).join('');
-      profilesContainer.style.display = 'block';
     } else {
-      profilesList.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No profiles found</td></tr>';
-      profilesContainer.style.display = 'block';
+      profilesList.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No profiles found</td></tr>';
+    }
+    profilesContainer.style.display = 'block';
+  }
+
+  function openEditProfileModal(profileId) {
+    const profile = cachedProfiles.find((p) => String(p.id) === String(profileId));
+    if (!profile) {
+      return;
     }
 
+    profileIdInput.value = profile.id;
+    profileEmailInput.value = profile.email || '';
+    profileFirstNameInput.value = profile.first_name || '';
+    profileLastNameInput.value = profile.last_name || '';
+    profileDisplayNameInput.value = profile.display_name || '';
+    profilePhoneInput.value = profile.phone_number || '';
+    profileNotesInput.value = profile.notes || '';
+
+    profileModal.show();
+  }
+
+  async function handleDeleteProfile(profileId) {
+    if (!confirm('Are you sure you want to delete this guide profile? This will also remove their tour allocations.')) {
+      return;
+    }
+
+    try {
+      await deleteProfile(profileId);
+      cachedProfiles = await getAllProfiles();
+      renderProfilesTable();
+      populateGuideOptions();
+    } catch (error) {
+      alert(`Error deleting profile: ${error.message}`);
+    }
+  }
+
+  async function handleProfileFormSubmit(event) {
+    event.preventDefault();
+
+    const profileId = profileIdInput.value;
+    const profileData = {
+      first_name: profileFirstNameInput.value,
+      last_name: profileLastNameInput.value,
+      display_name: profileDisplayNameInput.value,
+      phone_number: profilePhoneInput.value,
+      notes: profileNotesInput.value,
+    };
+
+    try {
+      await adminUpdateProfile(profileId, profileData);
+      profileModal.hide();
+      cachedProfiles = await getAllProfiles();
+      renderProfilesTable();
+      populateGuideOptions();
+      renderToursTable();
+    } catch (error) {
+      alert(`Error saving profile: ${error.message}`);
+    }
+  }
+
+  profileForm?.addEventListener('submit', handleProfileFormSubmit);
+
+  profilesList.addEventListener('click', (event) => {
+    const editButton = event.target.closest('.edit-profile-button');
+    if (editButton) {
+      openEditProfileModal(editButton.dataset.profileId);
+      return;
+    }
+
+    const deleteButton = event.target.closest('.delete-profile-button');
+    if (deleteButton) {
+      handleDeleteProfile(deleteButton.dataset.profileId);
+    }
+  });
+
+  // Load Guide Profiles
+  try {
+    cachedProfiles = await getAllProfiles();
+    profilesLoading.style.display = 'none';
+    renderProfilesTable();
     populateGuideOptions();
   } catch (error) {
     console.error('Error loading profiles:', error);

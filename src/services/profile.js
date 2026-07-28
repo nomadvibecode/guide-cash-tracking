@@ -153,3 +153,30 @@ export async function getAllProfiles() {
     if (error) throw error;
     return data;
 }
+
+export async function adminUpdateProfile(profileId, profileData) {
+    const { data, error } = await supabase
+        .from('guide_profiles')
+        .update(profileData)
+        .eq('id', profileId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+    }
+    return data;
+}
+
+export async function deleteProfile(profileId) {
+    const { error } = await supabase
+        .from('guide_profiles')
+        .delete()
+        .eq('id', profileId);
+
+    if (error) {
+        console.error('Error deleting profile:', error);
+        throw error;
+    }
+}
