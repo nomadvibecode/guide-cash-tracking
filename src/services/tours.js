@@ -120,7 +120,91 @@ export async function joinTour({ tourId, guideId }) {
 }
 
 export async function getAllTours() {
-  const { data, error } = await supabase.from('tours').select('*');
-  if (error) throw error;
+  const { data, error } = await supabase
+    .from('tours')
+    .select(`
+      *,
+      tour_guides (
+        guide_id,
+        guide_profiles (
+          id,
+          display_name
+        )
+      )
+    `)
+    .order('start_date', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
   return data;
+}
+
+export async function addTour(tourData) {
+  const { data, error } = await supabase
+    .from('tours')
+    .insert(tourData)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function updateTour(tourId, tourData) {
+  const { data, error } = await supabase
+    .from('tours')
+    .update(tourData)
+    .eq('id', tourId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function deleteTour(tourId) {
+  const { error } = await supabase
+    .from('tours')
+    .delete()
+    .eq('id', tourId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function allocateGuidesToTour(tourId, guideIds) {
+  const { error: deleteError } = await supabase
+    .from('tour_guides')
+    .delete()
+    .eq('tour_id', tourId);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  if (!guideIds || guideIds.length === 0) {
+    return;
+  }
+
+  const rows = guideIds.map((guideId) => ({
+    tour_id: tourId,
+    guide_id: guideId,
+  }));
+
+  const { error: insertError } = await supabase
+    .from('tour_guides')
+    .insert(rows);
+
+  if (insertError) {
+    throw insertError;
+  }
 }

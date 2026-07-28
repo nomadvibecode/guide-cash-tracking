@@ -1,9 +1,16 @@
 import './admin.css';
 import adminFragment from './admin.html?raw';
-import { getAllTours } from '../../services/tours.js';
+import {
+  getAllTours,
+  addTour,
+  updateTour,
+  deleteTour,
+  allocateGuidesToTour,
+} from '../../services/tours.js';
 import { getAllProfiles } from '../../services/profile.js';
 import { getAllExpenseReports } from '../../services/expense-reports.js';
 import { checkAdmin } from '../../services/auth.js';
+import { Modal } from 'bootstrap';
 
 export async function renderAdminPage(container) {
   container.innerHTML = adminFragment;
@@ -32,40 +39,173 @@ export async function renderAdminPage(container) {
   const expensesList = document.getElementById('expenses-list');
   const expensesError = document.getElementById('expenses-error');
 
-  // Load Tours
-  try {
-    const tours = await getAllTours();
-    toursLoading.style.display = 'none';
-    
-    if (tours && tours.length > 0) {
-      toursList.innerHTML = tours.map(tour => `
-        <tr>
-          <td>${tour.tour_name || 'N/A'}</td>
-          <td>${tour.start_date || 'N/A'}</td>
-          <td>${tour.end_date || 'N/A'}</td>
-          <td>${tour.status || 'N/A'}</td>
-          <td>${tour.guest_count || 0}</td>
-        </tr>
-      `).join('');
-      toursContainer.style.display = 'block';
-    } else {
-      toursList.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No tours found</td></tr>';
-      toursContainer.style.display = 'block';
-    }
-  } catch (error) {
-    console.error('Error loading tours:', error);
-    toursLoading.style.display = 'none';
-    toursError.textContent = `Error loading tours: ${error.message}`;
-    toursError.classList.remove('d-none');
+  // Tour modal elements
+  const tourModalElement = document.getElementById('tour-modal');
+  const tourModal = new Modal(tourModalElement);
+  const tourForm = document.getElementById('tour-form');
+  const tourModalLabel = document.getElementById('tour-modal-label');
+  const tourIdInput = document.getElementById('tour-id');
+  const tourNameInput = document.getElementById('tour-name');
+  const startDateInput = document.getElementById('start-date');
+  const endDateInput = document.getElementById('end-date');
+  const statusInput = document.getElementById('status');
+  const guestCountInput = document.getElementById('guest-count');
+  const allocatedGuidesSelect = document.getElementById('allocated-guides');
+  const addTourButton = document.getElementById('add-tour-button');
+
+  let cachedTours = [];
+  let cachedProfiles = [];
+
+  function populateGuideOptions() {
+    allocatedGuidesSelect.innerHTML = cachedProfiles
+      .map((profile) => `<option value="${profile.id}">${profile.display_name || profile.email}</option>`)
+      .join('');
   }
+
+  function renderToursTable() {
+    if (cachedTours.length > 0) {
+      toursList.innerHTML = cachedTours.map((tour) => {
+        const guideNames = (tour.tour_guides || [])
+          .map((allocation) => allocation.guide_profiles?.display_name)
+          .filter(Boolean)
+          .join(', ') || 'N/A';
+
+        return `
+          <tr>
+            <td>${tour.tour_name || 'N/A'}</td>
+            <td>${tour.start_date || 'N/A'}</td>
+            <td>${tour.end_date || 'N/A'}</td>
+            <td>${tour.status || 'N/A'}</td>
+            <td>${tour.guest_count || 0}</td>
+            <td>${guideNames}</td>
+            <td>
+              <button type="button" class="btn btn-sm btn-outline-secondary edit-tour-button" data-tour-id="${tour.id}">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger delete-tour-button" data-tour-id="${tour.id}">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      toursList.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No tours found</td></tr>';
+    }
+    toursContainer.style.display = 'block';
+  }
+
+  async function loadTours() {
+    try {
+      toursLoading.style.display = 'block';
+      toursContainer.style.display = 'none';
+      cachedTours = await getAllTours();
+      toursLoading.style.display = 'none';
+      renderToursTable();
+    } catch (error) {
+      console.error('Error loading tours:', error);
+      toursLoading.style.display = 'none';
+      toursError.textContent = `Error loading tours: ${error.message}`;
+      toursError.classList.remove('d-none');
+    }
+  }
+
+  function openAddTourModal() {
+    tourModalLabel.textContent = 'Add Tour';
+    tourForm.reset();
+    tourIdInput.value = '';
+    Array.from(allocatedGuidesSelect.options).forEach((option) => {
+      option.selected = false;
+    });
+    tourModal.show();
+  }
+
+  function openEditTourModal(tourId) {
+    const tour = cachedTours.find((t) => String(t.id) === String(tourId));
+    if (!tour) {
+      return;
+    }
+
+    tourModalLabel.textContent = 'Edit Tour';
+    tourIdInput.value = tour.id;
+    tourNameInput.value = tour.tour_name || '';
+    startDateInput.value = tour.start_date || '';
+    endDateInput.value = tour.end_date || '';
+    statusInput.value = tour.status || 'not_started';
+    guestCountInput.value = tour.guest_count || 0;
+
+    const allocatedIds = (tour.tour_guides || []).map((allocation) => String(allocation.guide_id));
+    Array.from(allocatedGuidesSelect.options).forEach((option) => {
+      option.selected = allocatedIds.includes(option.value);
+    });
+
+    tourModal.show();
+  }
+
+  async function handleDeleteTour(tourId) {
+    if (!confirm('Are you sure you want to delete this tour?')) {
+      return;
+    }
+
+    try {
+      await deleteTour(tourId);
+      await loadTours();
+    } catch (error) {
+      alert(`Error deleting tour: ${error.message}`);
+    }
+  }
+
+  async function handleTourFormSubmit(event) {
+    event.preventDefault();
+
+    const selectedGuideIds = Array.from(allocatedGuidesSelect.selectedOptions).map((option) => option.value);
+
+    if (selectedGuideIds.length > 3) {
+      alert('You can allocate a maximum of 3 guides per tour.');
+      return;
+    }
+
+    const tourData = {
+      tour_name: tourNameInput.value,
+      start_date: startDateInput.value,
+      end_date: endDateInput.value,
+      status: statusInput.value,
+      guest_count: Number(guestCountInput.value) || 0,
+    };
+
+    try {
+      const tourId = tourIdInput.value;
+      const savedTour = tourId
+        ? await updateTour(tourId, tourData)
+        : await addTour(tourData);
+
+      await allocateGuidesToTour(savedTour.id, selectedGuideIds);
+      tourModal.hide();
+      await loadTours();
+    } catch (error) {
+      alert(`Error saving tour: ${error.message}`);
+    }
+  }
+
+  addTourButton?.addEventListener('click', openAddTourModal);
+  tourForm?.addEventListener('submit', handleTourFormSubmit);
+
+  toursList.addEventListener('click', (event) => {
+    const editButton = event.target.closest('.edit-tour-button');
+    if (editButton) {
+      openEditTourModal(editButton.dataset.tourId);
+      return;
+    }
+
+    const deleteButton = event.target.closest('.delete-tour-button');
+    if (deleteButton) {
+      handleDeleteTour(deleteButton.dataset.tourId);
+    }
+  });
 
   // Load Guide Profiles
   try {
-    const profiles = await getAllProfiles();
+    cachedProfiles = await getAllProfiles();
     profilesLoading.style.display = 'none';
-    
-    if (profiles && profiles.length > 0) {
-      profilesList.innerHTML = profiles.map(profile => `
+
+    if (cachedProfiles && cachedProfiles.length > 0) {
+      profilesList.innerHTML = cachedProfiles.map(profile => `
         <tr>
           <td>${profile.display_name || 'N/A'}</td>
           <td>${profile.email || 'N/A'}</td>
@@ -78,6 +218,8 @@ export async function renderAdminPage(container) {
       profilesList.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No profiles found</td></tr>';
       profilesContainer.style.display = 'block';
     }
+
+    populateGuideOptions();
   } catch (error) {
     console.error('Error loading profiles:', error);
     profilesLoading.style.display = 'none';
@@ -111,5 +253,8 @@ export async function renderAdminPage(container) {
     expensesError.textContent = `Error loading expense reports: ${error.message}`;
     expensesError.classList.remove('d-none');
   }
+
+  // Load Tours (after profiles so the guide select is populated)
+  await loadTours();
 }
 
