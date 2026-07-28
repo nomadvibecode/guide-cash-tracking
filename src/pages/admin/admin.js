@@ -8,7 +8,13 @@ import {
   allocateGuidesToTour,
 } from '../../services/tours.js';
 import { getAllProfiles, adminUpdateProfile, deleteProfile } from '../../services/profile.js';
-import { getAllExpenseReports } from '../../services/expense-reports.js';
+import {
+  getAllExpenseReports,
+  getExpenseReportCurrencies,
+  adminAddExpenseReport,
+  adminUpdateExpenseReport,
+  deleteExpenseReport,
+} from '../../services/expense-reports.js';
 import { checkAdmin } from '../../services/auth.js';
 import { Modal } from 'bootstrap';
 
@@ -65,8 +71,25 @@ export async function renderAdminPage(container) {
   const profilePhoneInput = document.getElementById('profile-phone');
   const profileNotesInput = document.getElementById('profile-notes');
 
+  // Expense report modal elements
+  const expenseModalElement = document.getElementById('expense-modal');
+  const expenseModal = new Modal(expenseModalElement);
+  const expenseForm = document.getElementById('expense-form');
+  const expenseModalLabel = document.getElementById('expense-modal-label');
+  const expenseIdInput = document.getElementById('expense-id');
+  const expenseTourSelect = document.getElementById('expense-tour');
+  const expenseGuideSelect = document.getElementById('expense-guide');
+  const expenseMemoInput = document.getElementById('expense-memo');
+  const expenseDateInput = document.getElementById('expense-date');
+  const expenseStatusInput = document.getElementById('expense-status');
+  const expenseAmountInput = document.getElementById('expense-amount');
+  const expenseCurrencyInput = document.getElementById('expense-currency');
+  const addExpenseButton = document.getElementById('add-expense-button');
+
   let cachedTours = [];
   let cachedProfiles = [];
+  let cachedExpenseReports = [];
+  let cachedCurrencies = [];
 
   function populateGuideOptions() {
     allocatedGuidesSelect.innerHTML = cachedProfiles
@@ -258,6 +281,7 @@ export async function renderAdminPage(container) {
       cachedProfiles = await getAllProfiles();
       renderProfilesTable();
       populateGuideOptions();
+      renderExpenseReportsTable();
     } catch (error) {
       alert(`Error deleting profile: ${error.message}`);
     }
@@ -282,6 +306,7 @@ export async function renderAdminPage(container) {
       renderProfilesTable();
       populateGuideOptions();
       renderToursTable();
+      renderExpenseReportsTable();
     } catch (error) {
       alert(`Error saving profile: ${error.message}`);
     }
@@ -316,33 +341,154 @@ export async function renderAdminPage(container) {
   }
 
   // Load Expense Reports
-  try {
-    const reports = await getAllExpenseReports();
-    expensesLoading.style.display = 'none';
-    
-    if (reports && reports.length > 0) {
-      expensesList.innerHTML = reports.map(report => `
-        <tr>
-          <td>${report.transaction_memo || 'N/A'}</td>
-          <td>${report.transaction_date || 'N/A'}</td>
-          <td>${report.amount || 0}</td>
-          <td>${report.currency || 'N/A'}</td>
-          <td>${report.status || 'N/A'}</td>
-        </tr>
-      `).join('');
-      expensesContainer.style.display = 'block';
-    } else {
-      expensesList.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No expense reports found</td></tr>';
-      expensesContainer.style.display = 'block';
-    }
-  } catch (error) {
-    console.error('Error loading expense reports:', error);
-    expensesLoading.style.display = 'none';
-    expensesError.textContent = `Error loading expense reports: ${error.message}`;
-    expensesError.classList.remove('d-none');
+  function populateExpenseFormOptions() {
+    expenseTourSelect.innerHTML = cachedTours
+      .map((tour) => `<option value="${tour.id}">${tour.tour_name}</option>`)
+      .join('');
+
+    expenseGuideSelect.innerHTML = cachedProfiles
+      .map((profile) => `<option value="${profile.id}">${profile.display_name || profile.email}</option>`)
+      .join('');
+
+    expenseCurrencyInput.innerHTML = cachedCurrencies
+      .map((currency) => `<option value="${currency.code}">${currency.code} - ${currency.label}</option>`)
+      .join('');
   }
 
-  // Load Tours (after profiles so the guide select is populated)
+  function renderExpenseReportsTable() {
+    if (cachedExpenseReports.length > 0) {
+      expensesList.innerHTML = cachedExpenseReports.map((report) => {
+        const guideName = cachedProfiles.find((profile) => profile.id === report.guide_id)?.display_name || 'N/A';
+
+        return `
+          <tr>
+            <td>${report.tours?.tour_name || 'N/A'}</td>
+            <td>${guideName}</td>
+            <td>${report.transaction_memo || 'N/A'}</td>
+            <td>${report.transaction_date || 'N/A'}</td>
+            <td>${report.amount || 0}</td>
+            <td>${report.currency || 'N/A'}</td>
+            <td>${report.status || 'N/A'}</td>
+            <td>
+              <button type="button" class="btn btn-sm btn-outline-secondary edit-expense-button" data-expense-id="${report.id}">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger delete-expense-button" data-expense-id="${report.id}">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      expensesList.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No expense reports found</td></tr>';
+    }
+    expensesContainer.style.display = 'block';
+  }
+
+  async function loadExpenseReports() {
+    try {
+      expensesLoading.style.display = 'block';
+      expensesContainer.style.display = 'none';
+      cachedExpenseReports = await getAllExpenseReports();
+      expensesLoading.style.display = 'none';
+      renderExpenseReportsTable();
+    } catch (error) {
+      console.error('Error loading expense reports:', error);
+      expensesLoading.style.display = 'none';
+      expensesError.textContent = `Error loading expense reports: ${error.message}`;
+      expensesError.classList.remove('d-none');
+    }
+  }
+
+  function openAddExpenseModal() {
+    expenseModalLabel.textContent = 'Add Expense Report';
+    expenseForm.reset();
+    expenseIdInput.value = '';
+    populateExpenseFormOptions();
+    expenseModal.show();
+  }
+
+  function openEditExpenseModal(expenseId) {
+    const report = cachedExpenseReports.find((r) => String(r.id) === String(expenseId));
+    if (!report) {
+      return;
+    }
+
+    populateExpenseFormOptions();
+    expenseModalLabel.textContent = 'Edit Expense Report';
+    expenseIdInput.value = report.id;
+    expenseTourSelect.value = report.tour_id;
+    expenseGuideSelect.value = report.guide_id;
+    expenseMemoInput.value = report.transaction_memo || '';
+    expenseDateInput.value = report.transaction_date || '';
+    expenseStatusInput.value = report.status || 'not_submitted';
+    expenseAmountInput.value = report.amount || 0;
+    expenseCurrencyInput.value = report.currency || '';
+
+    expenseModal.show();
+  }
+
+  async function handleDeleteExpenseReport(expenseId) {
+    if (!confirm('Are you sure you want to delete this expense report?')) {
+      return;
+    }
+
+    try {
+      await deleteExpenseReport(expenseId);
+      await loadExpenseReports();
+    } catch (error) {
+      alert(`Error deleting expense report: ${error.message}`);
+    }
+  }
+
+  async function handleExpenseFormSubmit(event) {
+    event.preventDefault();
+
+    const expenseData = {
+      tour_id: expenseTourSelect.value,
+      guide_id: expenseGuideSelect.value,
+      transaction_memo: expenseMemoInput.value,
+      transaction_date: expenseDateInput.value,
+      status: expenseStatusInput.value,
+      amount: Number(expenseAmountInput.value) || 0,
+      currency: expenseCurrencyInput.value,
+    };
+
+    try {
+      const expenseId = expenseIdInput.value;
+      if (expenseId) {
+        await adminUpdateExpenseReport(expenseId, expenseData);
+      } else {
+        await adminAddExpenseReport(expenseData);
+      }
+      expenseModal.hide();
+      await loadExpenseReports();
+    } catch (error) {
+      alert(`Error saving expense report: ${error.message}`);
+    }
+  }
+
+  addExpenseButton?.addEventListener('click', openAddExpenseModal);
+  expenseForm?.addEventListener('submit', handleExpenseFormSubmit);
+
+  expensesList.addEventListener('click', (event) => {
+    const editButton = event.target.closest('.edit-expense-button');
+    if (editButton) {
+      openEditExpenseModal(editButton.dataset.expenseId);
+      return;
+    }
+
+    const deleteButton = event.target.closest('.delete-expense-button');
+    if (deleteButton) {
+      handleDeleteExpenseReport(deleteButton.dataset.expenseId);
+    }
+  });
+
+  try {
+    cachedCurrencies = await getExpenseReportCurrencies();
+  } catch (error) {
+    console.error('Error loading currencies:', error);
+  }
+
+  // Load Tours (needed for the expense report tour select as well)
   await loadTours();
+  await loadExpenseReports();
 }
 

@@ -303,7 +303,57 @@ export function getTransactionTypeFromLine(line) {
 }
 
 export async function getAllExpenseReports() {
-    const { data, error } = await supabase.from('expense_reports').select('*');
+    const { data, error } = await supabase
+      .from('expense_reports')
+      .select(`
+        *,
+        tours (
+          tour_name
+        )
+      `)
+      .order('transaction_date', { ascending: false });
     if (error) throw error;
     return data;
+}
+
+export async function getExpenseReportCurrencies() {
+  const { data, error } = await supabase
+    .from('expense_report_line_currency')
+    .select('code, label')
+    .order('code', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function adminAddExpenseReport(reportData) {
+  const { data, error } = await supabase
+    .from('expense_reports')
+    .insert(reportData)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function adminUpdateExpenseReport(reportId, reportData) {
+  const { data, error } = await supabase
+    .from('expense_reports')
+    .update(reportData)
+    .eq('id', reportId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteExpenseReport(reportId) {
+  const { error } = await supabase
+    .from('expense_reports')
+    .delete()
+    .eq('id', reportId);
+
+  if (error) throw error;
 }

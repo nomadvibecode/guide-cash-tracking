@@ -67,7 +67,10 @@
     
     <!-- Expense Reports Tab -->
     <div class="tab-pane fade" id="expenses" role="tabpanel" aria-labelledby="expenses-tab">
-      <h2 class="mt-3">All Expense Reports</h2>
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <h2 class="mb-0">All Expense Reports</h2>
+        <button type="button" class="btn btn-primary" id="add-expense-button">Add Expense Report</button>
+      </div>
       <div id="expenses-loading" class="spinner-border" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
@@ -75,11 +78,14 @@
         <table class="table table-striped">
           <thead>
             <tr>
+              <th>Tour</th>
+              <th>Guide</th>
               <th>Memo</th>
               <th>Transaction Date</th>
               <th>Amount</th>
               <th>Currency</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="expenses-list"></tbody>
@@ -184,6 +190,63 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Expense Report Modal -->
+<div class="modal fade" id="expense-modal" tabindex="-1" aria-labelledby="expense-modal-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="expense-form">
+        <div class="modal-header">
+          <h5 class="modal-title" id="expense-modal-label">Add Expense Report</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="expense-id">
+          <div class="mb-3">
+            <label for="expense-tour" class="form-label">Tour</label>
+            <select class="form-select" id="expense-tour" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="expense-guide" class="form-label">Guide</label>
+            <select class="form-select" id="expense-guide" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="expense-memo" class="form-label">Memo</label>
+            <input type="text" class="form-control" id="expense-memo" required>
+          </div>
+          <div class="row">
+            <div class="col mb-3">
+              <label for="expense-date" class="form-label">Transaction Date</label>
+              <input type="date" class="form-control" id="expense-date" required>
+            </div>
+            <div class="col mb-3">
+              <label for="expense-status" class="form-label">Status</label>
+              <select class="form-select" id="expense-status" required>
+                <option value="not_submitted">Not Submitted</option>
+                <option value="submitted">Submitted</option>
+                <option value="processed">Processed</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col mb-3">
+              <label for="expense-amount" class="form-label">Amount</label>
+              <input type="number" class="form-control" id="expense-amount" min="0" step="0.01" value="0" required>
+            </div>
+            <div class="col mb-3">
+              <label for="expense-currency" class="form-label">Currency</label>
+              <select class="form-select" id="expense-currency" required></select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Expense Report</button>
         </div>
       </form>
     </div>
