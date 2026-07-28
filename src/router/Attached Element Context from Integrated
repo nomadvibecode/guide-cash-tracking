@@ -1,0 +1,503 @@
+Attached Element Context from Integrated Browser
+
+Element: main#site-main.site-main
+
+URL: http://localhost:5173/admin
+
+HTML Path: div#app > div.app-shell > main#site-main.site-main
+
+Outer HTML:
+```html
+<main id="site-main" class="site-main"><div class="container mt-4">
+  <h1>Admin Panel</h1>
+  
+  <ul class="nav nav-tabs" id="adminTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tours-tab" data-bs-toggle="tab" data-bs-target="#tours" type="button" role="tab" aria-controls="tours" aria-selected="true">Tours</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="profiles-tab" data-bs-toggle="tab" data-bs-target="#profiles" type="button" role="tab" aria-controls="profiles" aria-selected="false">Guide Profiles</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="expenses-tab" data-bs-toggle="tab" data-bs-target="#expenses" type="button" role="tab" aria-controls="expenses" aria-selected="false">Expense Reports</button>
+    </li>
+  </ul>
+  
+  <div class="tab-content" id="adminTabContent">
+    <!-- Tours Tab -->
+    <div class="tab-pane fade show active" id="tours" role="tabpanel" aria-labelledby="tours-tab">
+      <h2 class="mt-3">All Tours</h2>
+      <div id="tours-loading" class="spinner-border" role="status" style="display: none;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div class="table-responsive" id="tours-container" style="display: block;">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Tour Name</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Status</th>
+              <th>Guest Count</th>
+            </tr>
+          </thead>
+          <tbody id="tours-list">
+        <tr>
+          <td>Sample tour 1</td>
+          <td>2026-07-05</td>
+          <td>2026-07-10</td>
+          <td>not_started</td>
+          <td>0</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 2</td>
+          <td>2026-07-03</td>
+          <td>2026-07-06</td>
+          <td>in_progress</td>
+          <td>0</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 3</td>
+          <td>2026-07-01</td>
+          <td>2026-07-03</td>
+          <td>finished</td>
+          <td>0</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 1.1</td>
+          <td>2026-07-05</td>
+          <td>2026-07-11</td>
+          <td>not_started</td>
+          <td>8</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 1.2</td>
+          <td>2026-06-24</td>
+          <td>2026-06-30</td>
+          <td>not_started</td>
+          <td>19</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 1.3</td>
+          <td>2026-06-13</td>
+          <td>2026-06-19</td>
+          <td>not_started</td>
+          <td>16</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 2.1</td>
+          <td>2026-07-03</td>
+          <td>2026-07-07</td>
+          <td>in_progress</td>
+          <td>27</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 2.2</td>
+          <td>2026-06-22</td>
+          <td>2026-06-28</td>
+          <td>in_progress</td>
+          <td>14</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 2.3</td>
+          <td>2026-06-11</td>
+          <td>2026-06-17</td>
+          <td>in_progress</td>
+          <td>20</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 3.1</td>
+          <td>2026-07-01</td>
+          <td>2026-07-05</td>
+          <td>finished</td>
+          <td>14</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 3.2</td>
+          <td>2026-06-20</td>
+          <td>2026-06-26</td>
+          <td>finished</td>
+          <td>25</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 3.3</td>
+          <td>2026-06-09</td>
+          <td>2026-06-15</td>
+          <td>finished</td>
+          <td>8</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 4.1</td>
+          <td>2026-06-29</td>
+          <td>2026-07-05</td>
+          <td>not_started</td>
+          <td>23</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 4.2</td>
+          <td>2026-06-18</td>
+          <td>2026-06-23</td>
+          <td>not_started</td>
+          <td>9</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 4.3</td>
+          <td>2026-06-07</td>
+          <td>2026-06-11</td>
+          <td>not_started</td>
+          <td>17</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 5.1</td>
+          <td>2026-06-27</td>
+          <td>2026-07-01</td>
+          <td>in_progress</td>
+          <td>23</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 5.2</td>
+          <td>2026-06-16</td>
+          <td>2026-06-21</td>
+          <td>in_progress</td>
+          <td>20</td>
+        </tr>
+      
+        <tr>
+          <td>Sample tour 5.3</td>
+          <td>2026-06-05</td>
+          <td>2026-06-08</td>
+          <td>in_progress</td>
+          <td>24</td>
+        </tr>
+      
+        <tr>
+          <td>Tour du Mont Blanc</td>
+          <td>2026-07-29</td>
+          <td>2026-08-05</td>
+          <td>not_started</td>
+          <td>5</td>
+        </tr>
+      
+        <tr>
+          <td>Munich to Venice by Train</td>
+          <td>2026-07-25</td>
+          <td>2026-08-01</td>
+          <td>in_progress</td>
+          <td>3</td>
+        </tr>
+      </tbody>
+        </table>
+      </div>
+      <div id="tours-error" class="alert alert-danger d-none"></div>
+    </div>
+    
+    <!-- Guide Profiles Tab -->
+    <div class="tab-pane fade" id="profiles" role="tabpanel" aria-labelledby="profiles-tab">
+      <h2 class="mt-3">All Guide Profiles</h2>
+      <div id="profiles-loading" class="spinner-border" role="status" style="display: none;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div class="table-responsive" id="profiles-container" style="display: block;">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Display Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Bio</th>
+            </tr>
+          </thead>
+          <tbody id="profiles-list">
+        <tr>
+          <td>Peter</td>
+          <td>peter@gmail.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Maria</td>
+          <td>maria@gmail.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Guide 10</td>
+          <td>guide-10@example.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Guide 11</td>
+          <td>guide-11@example.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Guide 13</td>
+          <td>guide-13@example.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Guide 14</td>
+          <td>guide-14@example.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Steve</td>
+          <td>steve@gmail.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Homer</td>
+          <td>homer@simpson.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      
+        <tr>
+          <td>Adam</td>
+          <td>guide-12@example.com</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+      </tbody>
+        </table>
+      </div>
+      <div id="profiles-error" class="alert alert-danger d-none"></div>
+    </div>
+    
+    <!-- Expense Reports Tab -->
+    <div class="tab-pane fade" id="expenses" role="tabpanel" aria-labelledby="expenses-tab">
+      <h2 class="mt-3">All Expense Reports</h2>
+      <div id="expenses-loading" class="spinner-border" role="status" style="display: none;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div class="table-responsive" id="expenses-container" style="display: block;">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Memo</th>
+              <th>Transaction Date</th>
+              <th>Amount</th>
+              <th>Currency</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="expenses-list">
+        <tr>
+          <td>Sample expense report for peter@gmail.com on Sample tour 1</td>
+          <td>2026-07-12</td>
+          <td>351.49</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Sample expense report for maria@gmail.com on Sample tour 2</td>
+          <td>2026-07-11</td>
+          <td>381.88</td>
+          <td>USD</td>
+          <td>submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Sample expense report for steve@gmail.com on Sample tour 3</td>
+          <td>2026-07-10</td>
+          <td>526.99</td>
+          <td>BGN</td>
+          <td>processed</td>
+        </tr>
+      
+        <tr>
+          <td>Cash flow report for guide-10@example.com on Sample tour 1.1</td>
+          <td>2026-07-12</td>
+          <td>10.7</td>
+          <td>USD</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Cash flow report for guide-11@example.com on Sample tour 2.1</td>
+          <td>2026-07-11</td>
+          <td>6.31</td>
+          <td>EUR</td>
+          <td>submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Cash flow report for guide-13@example.com on Sample tour 4.1</td>
+          <td>2026-07-09</td>
+          <td>22.73</td>
+          <td>USD</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Cash flow report for guide-14@example.com on Sample tour 5.1</td>
+          <td>2026-07-08</td>
+          <td>16.12</td>
+          <td>EUR</td>
+          <td>submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 3.2</td>
+          <td>2026-06-20</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 3.3</td>
+          <td>2026-06-09</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 1.1</td>
+          <td>2026-07-05</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 2.1</td>
+          <td>2026-07-03</td>
+          <td>465</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Cash flow report for guide-12@example.com on Sample tour 3.1</td>
+          <td>2026-07-10</td>
+          <td>651.81</td>
+          <td>CHF</td>
+          <td>processed</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Tour du Mont Blanc</td>
+          <td>2026-07-29</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Munich to Venice by Train</td>
+          <td>2026-07-25</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 4.1</td>
+          <td>2026-06-29</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 5.1</td>
+          <td>2026-06-27</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 1</td>
+          <td>2026-07-05</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      
+        <tr>
+          <td>Expense report for Sample tour 5.1</td>
+          <td>2026-06-27</td>
+          <td>0</td>
+          <td>EUR</td>
+          <td>not_submitted</td>
+        </tr>
+      </tbody>
+        </table>
+      </div>
+      <div id="expenses-error" class="alert alert-danger d-none"></div>
+    </div>
+  </div>
+</div>
+</main>
+```
+
+Dimensions:
+- top: 73px
+- left: 0px
+- width: 814px
+- height: 1054px
+
+CSS:
+```css
+*, ::after, ::before { box-sizing:border-box }
+.site-main { flex: 1; }
+
+/* Inherited */
+body { font-family:var(--bs-body-font-family); font-size:var(--bs-body-font-size); font-weight:var(--bs-body-font-weight); line-height:var(--bs-body-line-height); color:var(--bs-body-color); text-align:var(--bs-body-text-align) }
+body { color: #0f172a }
+
+/* Resolved values */
+box-sizing: border-box;
+color: rgb(15, 23, 42);
+display: block;
+flex-basis: 0%;
+flex-grow: 1;
+flex-shrink: 1;
+font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+font-size: 16px;
+font-weight: 400;
+height: 1054.27px;
+line-height: 24px;
+text-align: start;
+unicode-bidi: isolate /*UA*/;
+width: 814px;
+
+/* CSS variables */
+--bs-body-font-weight: 400;
+--bs-body-line-height: 1.5;
+--bs-body-font-size: 1rem;
+--bs-body-font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+--bs-body-color: #212529;
+```
