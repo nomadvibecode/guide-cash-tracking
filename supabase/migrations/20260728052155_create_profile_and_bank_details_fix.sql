@@ -1,0 +1,2 @@
+-- This migration was previously applied to the remote database
+-- It handles profile and bank details fixes

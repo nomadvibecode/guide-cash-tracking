@@ -1,0 +1,2 @@
+-- This migration was previously applied to the remote database
+-- It reapplies the currency field to bank_details table

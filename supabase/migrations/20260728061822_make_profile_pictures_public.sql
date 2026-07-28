@@ -1,0 +1,2 @@
+-- This migration was previously applied to the remote database
+-- It makes profile pictures public in storage

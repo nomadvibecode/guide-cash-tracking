@@ -1,0 +1,2 @@
+-- This migration was previously applied to the remote database
+-- It splits the full_name column into first_name and last_name

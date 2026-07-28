@@ -1,0 +1,2 @@
+-- This migration was previously applied to the remote database
+-- It adds currency field to bank_details table
