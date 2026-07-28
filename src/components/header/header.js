@@ -63,10 +63,15 @@ export async function renderHeader(container, pathname) {
         checkAdmin(),
       ]);
 
-      navItems.forEach((item) => item.classList.remove('d-none'));
+      navItems.forEach((item) => {
+        if (item === adminLinkItem) {
+          return;
+        }
+        item.classList.remove('d-none');
+      });
 
-      if (isAdmin && adminLinkItem) {
-        adminLinkItem.classList.remove('d-none');
+      if (adminLinkItem) {
+        adminLinkItem.classList.toggle('d-none', !isAdmin);
       }
 
       if (authLink) {
