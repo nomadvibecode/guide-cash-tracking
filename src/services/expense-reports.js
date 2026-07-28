@@ -112,6 +112,8 @@ export async function loadExpenseReportsPageData(guideId) {
   const reportIds = (reportsResult.data ?? []).map((report) => report.id);
   let linesData = [];
   let linesError = null;
+  let attachmentsData = [];
+  let attachmentsError = null;
 
   if (reportIds.length > 0) {
     const linesResult = await client
@@ -123,20 +125,36 @@ export async function loadExpenseReportsPageData(guideId) {
 
     linesData = linesResult.data ?? [];
     linesError = linesResult.error;
+
+    const attachmentsResult = await client
+      .from('expense_report_attachments')
+      .select('id, expense_report_id, file_name, storage_path, mime_type, file_size_bytes, created_at')
+      .in('expense_report_id', reportIds)
+      .order('created_at', { ascending: false });
+
+    attachmentsData = attachmentsResult.data ?? [];
+    attachmentsError = attachmentsResult.error;
   }
 
-  const firstError = reportsResult.error ?? linesError ?? currenciesResult.error;
+  const firstError = reportsResult.error ?? linesError ?? attachmentsError ?? currenciesResult.error;
 
   if (firstError) {
     throw firstError;
   }
 
   const linesByReportId = new Map();
+  const attachmentsByReportId = new Map();
 
   for (const line of linesData) {
     const reportLines = linesByReportId.get(line.expense_report_id) ?? [];
     reportLines.push(line);
     linesByReportId.set(line.expense_report_id, reportLines);
+  }
+
+  for (const attachment of attachmentsData) {
+    const reportAttachments = attachmentsByReportId.get(attachment.expense_report_id) ?? [];
+    reportAttachments.push(attachment);
+    attachmentsByReportId.set(attachment.expense_report_id, reportAttachments);
   }
 
   function calculateRunningBalance(lines) {
@@ -150,6 +168,7 @@ export async function loadExpenseReportsPageData(guideId) {
     reports: (reportsResult.data ?? []).map((report) => ({
       ...report,
       lines: linesByReportId.get(report.id) ?? [],
+      attachments: attachmentsByReportId.get(report.id) ?? [],
       runningBalance: Number(calculateRunningBalance(linesByReportId.get(report.id) ?? []).toFixed(2)),
     })),
     currencies: currenciesResult.data ?? [],

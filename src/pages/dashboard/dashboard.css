@@ -344,6 +344,68 @@
 	border-bottom: 0;
 }
 
+.dashboard-attachments {
+	border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-attachment-upload-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr auto;
+	gap: 0.75rem;
+	align-items: center;
+}
+
+.dashboard-attachment-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.75rem;
+}
+
+.dashboard-attachment-item {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	align-items: center;
+	padding: 0.8rem 0.9rem;
+	border: 1px solid rgba(15, 23, 42, 0.08);
+	border-radius: 0.9rem;
+	background: rgba(248, 250, 252, 0.8);
+}
+
+.dashboard-attachment-meta {
+	min-width: 0;
+}
+
+.dashboard-attachment-name {
+	font-weight: 600;
+	color: #0f172a;
+	word-break: break-word;
+}
+
+.dashboard-attachment-info {
+	font-size: 0.82rem;
+	color: #64748b;
+	margin-top: 0.2rem;
+}
+
+.dashboard-attachment-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	justify-content: flex-end;
+}
+
+.dashboard-attachment-empty {
+	padding: 0.9rem;
+	border-radius: 0.9rem;
+	border: 1px dashed rgba(15, 23, 42, 0.12);
+	color: #64748b;
+	background: rgba(248, 250, 252, 0.6);
+	text-align: center;
+}
+
 @media (max-width: 991.98px) {
 	.dashboard-pie-wrap {
 		grid-template-columns: 1fr;
@@ -375,5 +437,18 @@
 
 	.dashboard-currency-metrics {
 		grid-template-columns: 1fr;
+	}
+
+	.dashboard-attachment-upload-row {
+		grid-template-columns: 1fr;
+	}
+
+	.dashboard-attachment-item {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.dashboard-attachment-actions {
+		justify-content: flex-start;
 	}
 }

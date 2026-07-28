@@ -1,0 +1,112 @@
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <img id="profile-picture-img" src="https://via.placeholder.com/150" alt="Profile Picture" class="rounded-circle mb-3" width="150" height="150">
+                    <h5 id="profile-display-name" class="card-title">Display Name</h5>
+                    <p id="profile-full-name" class="card-text text-muted">Full Name</p>
+                    <p id="profile-email" class="card-text text-muted bg-light rounded p-2"></p>
+                    <div class="d-grid gap-2 mt-3">
+                        <input type="file" id="profile-picture-upload" class="d-none" accept="image/png, image/jpeg, image/gif">
+                        <button id="upload-picture-btn" class="btn btn-primary">Upload New Picture</button>
+                        <button id="delete-picture-btn" class="btn btn-danger">Delete Picture</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Profile Information</h5>
+                    <form id="profile-form">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first-name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="first-name" name="first_name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last-name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="last-name" name="last_name">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="display-name" class="form-label">Display Name</label>
+                            <input type="text" class="form-control" id="display-name" name="display_name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone-number" class="form-label">Phone Number/s</label>
+                            <input type="text" class="form-control" id="phone-number" name="phone_number">
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Save Profile</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Bank Details</h5>
+                    <div id="bank-details-container"></div>
+                    <button id="add-bank-account-btn" class="btn btn-secondary mt-3">Add Bank Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bank Detail Modal -->
+<div class="modal fade" id="bank-detail-modal" tabindex="-1" aria-labelledby="bank-detail-modal-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bank-detail-modal-label">Bank Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="bank-detail-form">
+            <input type="hidden" id="bank-detail-id" name="id">
+            <div class="mb-3">
+                <label for="account-type" class="form-label">Account Type</label>
+                <select class="form-select" id="account-type" name="account_type" required>
+                    <option value="guiding_fees">For Guiding Fees</option>
+                    <option value="reimbursements">For Reimbursements</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="bank-name" class="form-label">Bank Name</label>
+                <input type="text" class="form-control" id="bank-name" name="bank_name">
+            </div>
+            <div class="mb-3">
+                <label for="account-number" class="form-label">Account Number</label>
+                <input type="text" class="form-control" id="account-number" name="account_number">
+            </div>
+            <div class="mb-3">
+                <label for="iban" class="form-label">IBAN</label>
+                <input type="text" class="form-control" id="iban" name="iban">
+            </div>
+            <div class="mb-3">
+                <label for="swift-bic" class="form-label">SWIFT/BIC</label>
+                <input type="text" class="form-control" id="swift-bic" name="swift_bic">
+            </div>
+            <div class="mb-3">
+                <label for="currency" class="form-label">Currency</label>
+                <select class="form-select" id="currency" name="currency">
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="CHF">CHF</option>
+                    <option value="GBP">GBP</option>
+                </select>
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" id="save-bank-detail-btn" class="btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>

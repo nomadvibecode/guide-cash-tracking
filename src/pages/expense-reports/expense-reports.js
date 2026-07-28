@@ -7,6 +7,12 @@ import {
   loadExpenseReportsPageData,
   updateExpenseReportLine,
 } from '../../services/expense-reports.js';
+import {
+  deleteExpenseReportAttachment,
+  getExpenseReportAttachmentUrl,
+  renameExpenseReportAttachment,
+  uploadExpenseReportAttachment,
+} from '../../services/expense-report-attachments.js';
 
 import './expense-reports.css';
 
@@ -38,6 +44,27 @@ function formatCurrencyAmount(amount, currency) {
   } catch {
     return `${numericAmount.toFixed(2)} ${currency}`;
   }
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 KB';
+  }
+
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${Math.ceil(bytes / 1024)} KB`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function getSelectedTransactionType(transactionType) {
@@ -211,7 +238,7 @@ function renderLedgerSummary(totals) {
   return `
     <div class="expense-report-balance-banner expense-report-balance-side">
       <div>
-        <div class="text-secondary small text-uppercase fw-semibold mb-1">Ledger balance</div>
+        <div class="text-secondary small text-uppercase fw-semibold mb-1">Ledger balance for this expense report</div>
         <div class="h5 fw-semibold mb-0">Money in adds, expenses subtract</div>
       </div>
       <div class="d-flex flex-column gap-2 w-100 mt-3">
@@ -245,6 +272,28 @@ function renderLineRows(lines) {
           </div>
         </td>
       </tr>
+    `)
+    .join('');
+}
+
+function renderReceiptRows(attachments) {
+  if (!attachments || attachments.length === 0) {
+    return '<li class="expense-report-attachment-empty">No receipts uploaded yet.</li>';
+  }
+
+  return attachments
+    .map((attachment) => `
+      <li class="expense-report-attachment-item" data-attachment-id="${attachment.id}">
+        <div class="expense-report-attachment-meta">
+          <div class="expense-report-attachment-name">${escapeHtml(attachment.file_name)}</div>
+          <div class="expense-report-attachment-info">${escapeHtml(attachment.mime_type)} · ${formatFileSize(attachment.file_size_bytes)}</div>
+        </div>
+        <div class="expense-report-attachment-actions">
+          <button class="btn btn-sm btn-outline-primary" type="button" data-open-attachment data-attachment-id="${attachment.id}">Open</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-rename-attachment data-attachment-id="${attachment.id}">Rename</button>
+          <button class="btn btn-sm btn-outline-danger" type="button" data-delete-attachment data-attachment-id="${attachment.id}">Delete</button>
+        </div>
+      </li>
     `)
     .join('');
 }
@@ -320,6 +369,7 @@ function renderExpenseReportsMarkup({ reports, currencies, selectedReportId, edi
   const currencySelectMarkup = renderCurrencyOptions(currencies, selectedReport?.currency);
   const transactionTypeSelectMarkup = renderTransactionTypeOptions('expense');
   const lineRowsMarkup = renderLineRows(selectedReport?.lines ?? []);
+  const receiptRowsMarkup = renderReceiptRows(selectedReport?.attachments ?? []);
   return `
     <section class="page-section">
       <div class="container">
@@ -397,6 +447,27 @@ function renderExpenseReportsMarkup({ reports, currencies, selectedReportId, edi
             <div class="mt-3 text-secondary small" data-expense-status>Each expense line keeps its own currency, so one report can mix EUR, CHF, and USD entries.</div>
           </form>
 
+          <section class="expense-report-receipts mt-4 pt-4">
+            <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-3">
+              <div>
+                <p class="page-kicker mb-2">Receipts</p>
+                <h2 class="h5 mb-0">Upload supporting files for this report</h2>
+              </div>
+              <span class="small text-secondary">Images or PDF · max 5 MB each</span>
+            </div>
+
+            <div class="expense-report-attachment-upload-row">
+              <input class="form-control" type="file" accept="image/*,application/pdf" data-attachment-file />
+              <input class="form-control" type="text" maxlength="120" placeholder="Rename before upload (optional)" data-attachment-file-name />
+              <button class="btn btn-primary" type="button" data-upload-attachment>Upload receipt</button>
+            </div>
+            <p class="small text-secondary mt-2 mb-3" data-attachment-status></p>
+
+            <ul class="expense-report-attachment-list mb-0">
+              ${receiptRowsMarkup}
+            </ul>
+          </section>
+
           <div class="table-responsive mt-4">
             <table class="table align-middle mb-0 expense-report-table">
               <thead>
@@ -473,6 +544,10 @@ export async function renderExpenseReportsPage(container, params = {}) {
       const editExpenseCurrency = container.querySelector('#editExpenseCurrency');
       const editExpenseMemo = container.querySelector('#editExpenseMemo');
       const editExpenseAmount = container.querySelector('#editExpenseAmount');
+      const attachmentFile = container.querySelector('[data-attachment-file]');
+      const attachmentFileName = container.querySelector('[data-attachment-file-name]');
+      const attachmentStatus = container.querySelector('[data-attachment-status]');
+      const uploadAttachmentButton = container.querySelector('[data-upload-attachment]');
 
       container.querySelector('[data-cancel-edit]')?.addEventListener('click', () => {
         editingLineId = null;
@@ -550,6 +625,157 @@ export async function renderExpenseReportsPage(container, params = {}) {
           status.textContent = error?.message ?? 'Could not save the expense line.';
           submitButton.disabled = false;
         }
+      });
+
+      const setAttachmentStatus = (message, isError = false) => {
+        if (!attachmentStatus) {
+          return;
+        }
+
+        attachmentStatus.textContent = message;
+        attachmentStatus.classList.toggle('text-danger', isError);
+        attachmentStatus.classList.toggle('text-secondary', !isError);
+      };
+
+      uploadAttachmentButton?.addEventListener('click', async () => {
+        const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
+        const file = attachmentFile?.files?.[0];
+        const nextFileName = attachmentFileName?.value?.trim();
+
+        if (!selectedReport) {
+          setAttachmentStatus('Select a report first.', true);
+          return;
+        }
+
+        if (!file) {
+          setAttachmentStatus('Choose an image or PDF file first.', true);
+          return;
+        }
+
+        uploadAttachmentButton.disabled = true;
+        setAttachmentStatus('Uploading receipt...');
+
+        try {
+          await uploadExpenseReportAttachment({
+            userId: session.user.id,
+            reportId: selectedReport.id,
+            file,
+            fileName: nextFileName || file.name,
+          });
+
+          await renderExpenseReportsPage(container, { reportId: selectedReport.id });
+        } catch (error) {
+          uploadAttachmentButton.disabled = false;
+          setAttachmentStatus(error?.message ?? 'Could not upload receipt.', true);
+        }
+      });
+
+      attachmentFile?.addEventListener('change', () => {
+        const selectedFile = attachmentFile.files?.[0];
+
+        if (!attachmentFileName) {
+          return;
+        }
+
+        attachmentFileName.value = selectedFile?.name ?? '';
+      });
+
+      container.querySelectorAll('[data-open-attachment]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
+          const attachment = selectedReport?.attachments?.find((entry) => entry.id === button.dataset.attachmentId);
+
+          if (!attachment) {
+            setAttachmentStatus('Attachment not found. Refresh and try again.', true);
+            return;
+          }
+
+          button.disabled = true;
+
+          try {
+            const signedUrl = await getExpenseReportAttachmentUrl(attachment.storage_path);
+            window.open(signedUrl, '_blank', 'noopener');
+            setAttachmentStatus('Opened receipt in a new tab.');
+          } catch (error) {
+            setAttachmentStatus(error?.message ?? 'Could not open receipt.', true);
+          } finally {
+            button.disabled = false;
+          }
+        });
+      });
+
+      container.querySelectorAll('[data-rename-attachment]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
+          const attachment = selectedReport?.attachments?.find((entry) => entry.id === button.dataset.attachmentId);
+
+          if (!attachment || !selectedReport) {
+            setAttachmentStatus('Attachment not found. Refresh and try again.', true);
+            return;
+          }
+
+          const nextName = window.prompt('Enter the new file name:', attachment.file_name);
+
+          if (nextName === null) {
+            return;
+          }
+
+          if (!nextName.trim()) {
+            setAttachmentStatus('File name cannot be empty.', true);
+            return;
+          }
+
+          button.disabled = true;
+          setAttachmentStatus('Renaming receipt...');
+
+          try {
+            await renameExpenseReportAttachment({
+              attachmentId: attachment.id,
+              reportId: selectedReport.id,
+              currentStoragePath: attachment.storage_path,
+              currentFileName: attachment.file_name,
+              nextFileName: nextName,
+              userId: session.user.id,
+            });
+
+            await renderExpenseReportsPage(container, { reportId: selectedReport.id });
+          } catch (error) {
+            button.disabled = false;
+            setAttachmentStatus(error?.message ?? 'Could not rename receipt.', true);
+          }
+        });
+      });
+
+      container.querySelectorAll('[data-delete-attachment]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
+          const attachment = selectedReport?.attachments?.find((entry) => entry.id === button.dataset.attachmentId);
+
+          if (!attachment || !selectedReport) {
+            setAttachmentStatus('Attachment not found. Refresh and try again.', true);
+            return;
+          }
+
+          if (!window.confirm(`Delete ${attachment.file_name}?`)) {
+            return;
+          }
+
+          button.disabled = true;
+          setAttachmentStatus('Deleting receipt...');
+
+          try {
+            await deleteExpenseReportAttachment({
+              attachmentId: attachment.id,
+              reportId: selectedReport.id,
+              storagePath: attachment.storage_path,
+            });
+
+            await renderExpenseReportsPage(container, { reportId: selectedReport.id });
+          } catch (error) {
+            button.disabled = false;
+            setAttachmentStatus(error?.message ?? 'Could not delete receipt.', true);
+          }
+        });
       });
 
       editForm?.addEventListener('submit', async (event) => {

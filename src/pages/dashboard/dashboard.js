@@ -2,6 +2,12 @@ import { hasSupabaseConfig, supabase } from '../../services/supabase-client.js';
 import { getCurrentSession } from '../../services/auth.js';
 import { loadToursPageData } from '../../services/tours.js';
 import { addExpenseTransaction, ensureGuideWorkspace } from '../../services/guide-workspace.js';
+import {
+  deleteExpenseReportAttachment,
+  getExpenseReportAttachmentUrl,
+  renameExpenseReportAttachment,
+  uploadExpenseReportAttachment,
+} from '../../services/expense-report-attachments.js';
 
 import './dashboard.css';
 
@@ -36,6 +42,27 @@ function formatMoney(value, currency) {
   }
 
   return moneyFormatterCache.get(normalizedCurrency).format(Number(value));
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 KB';
+  }
+
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${Math.ceil(bytes / 1024)} KB`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function statusLabel(status) {
@@ -490,6 +517,22 @@ function renderReportCard(report) {
     .join('');
 
   const lineTotal = report.lines.reduce((total, line) => total + Number(line.amount), 0);
+  const attachments = report.attachments ?? [];
+  const attachmentRows = attachments.length > 0
+    ? attachments.map((attachment) => `
+      <li class="dashboard-attachment-item" data-attachment-id="${attachment.id}">
+        <div class="dashboard-attachment-meta">
+          <div class="dashboard-attachment-name">${escapeHtml(attachment.file_name)}</div>
+          <div class="dashboard-attachment-info">${escapeHtml(attachment.mime_type)} · ${formatFileSize(attachment.file_size_bytes)}</div>
+        </div>
+        <div class="dashboard-attachment-actions">
+          <button class="btn btn-sm btn-outline-primary" type="button" data-open-attachment data-report-id="${report.id}" data-attachment-id="${attachment.id}">Open</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-rename-attachment data-report-id="${report.id}" data-attachment-id="${attachment.id}">Rename</button>
+          <button class="btn btn-sm btn-outline-danger" type="button" data-delete-attachment data-report-id="${report.id}" data-attachment-id="${attachment.id}">Delete</button>
+        </div>
+      </li>
+    `).join('')
+    : '<li class="dashboard-attachment-empty">No receipts uploaded yet.</li>';
 
   return `
     <article class="page-panel dashboard-report-card p-4 p-lg-5">
@@ -557,6 +600,27 @@ function renderReportCard(report) {
           </tbody>
         </table>
       </div>
+
+      <section class="dashboard-attachments mt-4 pt-4">
+        <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-3">
+          <div>
+            <p class="page-kicker mb-2">Receipts</p>
+            <h3 class="h5 mb-0">Upload supporting files for this report</h3>
+          </div>
+          <span class="small text-secondary">Images or PDF · max 5 MB each</span>
+        </div>
+
+        <div class="dashboard-attachment-upload-row">
+          <input class="form-control" type="file" accept="image/*,application/pdf" data-attachment-file data-report-id="${report.id}" />
+          <input class="form-control" type="text" maxlength="120" placeholder="Rename before upload (optional)" data-attachment-file-name data-report-id="${report.id}" />
+          <button class="btn btn-primary" type="button" data-upload-attachment data-report-id="${report.id}">Upload receipt</button>
+        </div>
+        <p class="small text-secondary mt-2 mb-3" data-attachment-status data-report-id="${report.id}"></p>
+
+        <ul class="dashboard-attachment-list mb-0">
+          ${attachmentRows}
+        </ul>
+      </section>
     </article>
   `;
 }
@@ -593,9 +657,31 @@ async function loadReports(guideId = null) {
     linesByReportId.set(line.expense_report_id, currentLines);
   }
 
+  const reportIds = reportsResult.data.map((report) => report.id);
+  const attachmentsByReportId = new Map();
+
+  if (reportIds.length > 0) {
+    const { data: attachments, error: attachmentsError } = await supabase
+      .from('expense_report_attachments')
+      .select('id, expense_report_id, file_name, storage_path, mime_type, file_size_bytes, created_at')
+      .in('expense_report_id', reportIds)
+      .order('created_at', { ascending: false });
+
+    if (attachmentsError) {
+      throw attachmentsError;
+    }
+
+    for (const attachment of attachments) {
+      const currentAttachments = attachmentsByReportId.get(attachment.expense_report_id) ?? [];
+      currentAttachments.push(attachment);
+      attachmentsByReportId.set(attachment.expense_report_id, currentAttachments);
+    }
+  }
+
   return reportsResult.data.map((report) => ({
     ...report,
     lines: linesByReportId.get(report.id) ?? [],
+    attachments: attachmentsByReportId.get(report.id) ?? [],
   }));
 }
 
@@ -667,6 +753,11 @@ export async function renderDashboardPage(container) {
       const currencySelect = container.querySelector('#transactionCurrency');
       const directionSelect = container.querySelector('#transactionDirection');
       const reportMap = new Map(reports.map((report) => [report.id, report]));
+      const attachmentMap = new Map(
+        reports.flatMap((report) =>
+          (report.attachments ?? []).map((attachment) => [attachment.id, attachment]),
+        ),
+      );
 
       const syncSelectedReportCurrency = () => {
         const selectedReport = reportMap.get(reportSelect.value);
@@ -721,6 +812,171 @@ export async function renderDashboardPage(container) {
           transactionStatus.textContent = error?.message ?? 'Could not save the transaction.';
           transactionForm.querySelector('button[type="submit"]').disabled = false;
         }
+      });
+
+      const uploadButtons = container.querySelectorAll('[data-upload-attachment]');
+      const openButtons = container.querySelectorAll('[data-open-attachment]');
+      const renameButtons = container.querySelectorAll('[data-rename-attachment]');
+      const deleteButtons = container.querySelectorAll('[data-delete-attachment]');
+
+      const setAttachmentStatus = (reportId, message, isError = false) => {
+        const statusNode = container.querySelector(`[data-attachment-status][data-report-id="${reportId}"]`);
+
+        if (!statusNode) {
+          return;
+        }
+
+        statusNode.textContent = message;
+        statusNode.classList.toggle('text-danger', isError);
+        statusNode.classList.toggle('text-secondary', !isError);
+      };
+
+      uploadButtons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          const { reportId } = button.dataset;
+          const input = container.querySelector(`[data-attachment-file][data-report-id="${reportId}"]`);
+          const fileNameInput = container.querySelector(`[data-attachment-file-name][data-report-id="${reportId}"]`);
+          const selectedFile = input?.files?.[0];
+          const nextFileName = fileNameInput?.value?.trim();
+
+          if (!selectedFile) {
+            setAttachmentStatus(reportId, 'Choose an image or PDF file first.', true);
+            return;
+          }
+
+          button.disabled = true;
+          setAttachmentStatus(reportId, 'Uploading receipt...');
+
+          try {
+            await uploadExpenseReportAttachment({
+              userId: session.user.id,
+              reportId,
+              file: selectedFile,
+              fileName: nextFileName || selectedFile.name,
+            });
+
+            await renderDashboardPage(container);
+          } catch (error) {
+            setAttachmentStatus(reportId, error?.message ?? 'Could not upload the receipt.', true);
+            button.disabled = false;
+          }
+        });
+      });
+
+      const attachmentFileInputs = container.querySelectorAll('[data-attachment-file]');
+
+      attachmentFileInputs.forEach((input) => {
+        input.addEventListener('change', () => {
+          const { reportId } = input.dataset;
+          const selectedFile = input.files?.[0];
+          const nameInput = container.querySelector(`[data-attachment-file-name][data-report-id="${reportId}"]`);
+
+          if (!nameInput) {
+            return;
+          }
+
+          nameInput.value = selectedFile?.name ?? '';
+        });
+      });
+
+      openButtons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          const { reportId, attachmentId } = button.dataset;
+          const attachment = attachmentMap.get(attachmentId);
+
+          if (!attachment) {
+            setAttachmentStatus(reportId, 'Receipt metadata is missing. Refresh and try again.', true);
+            return;
+          }
+
+          button.disabled = true;
+
+          try {
+            const signedUrl = await getExpenseReportAttachmentUrl(attachment.storage_path);
+            window.open(signedUrl, '_blank', 'noopener');
+            setAttachmentStatus(reportId, 'Opened receipt in a new tab.');
+          } catch (error) {
+            setAttachmentStatus(reportId, error?.message ?? 'Could not open the receipt.', true);
+          } finally {
+            button.disabled = false;
+          }
+        });
+      });
+
+      renameButtons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          const { reportId, attachmentId } = button.dataset;
+          const attachment = attachmentMap.get(attachmentId);
+
+          if (!attachment) {
+            setAttachmentStatus(reportId, 'Receipt metadata is missing. Refresh and try again.', true);
+            return;
+          }
+
+          const nextName = window.prompt('Enter the new file name:', attachment.file_name);
+
+          if (nextName === null) {
+            return;
+          }
+
+          if (!nextName.trim()) {
+            setAttachmentStatus(reportId, 'File name cannot be empty.', true);
+            return;
+          }
+
+          button.disabled = true;
+          setAttachmentStatus(reportId, 'Renaming receipt...');
+
+          try {
+            await renameExpenseReportAttachment({
+              attachmentId,
+              reportId,
+              currentStoragePath: attachment.storage_path,
+              currentFileName: attachment.file_name,
+              nextFileName: nextName,
+              userId: session.user.id,
+            });
+
+            await renderDashboardPage(container);
+          } catch (error) {
+            setAttachmentStatus(reportId, error?.message ?? 'Could not rename the receipt.', true);
+            button.disabled = false;
+          }
+        });
+      });
+
+      deleteButtons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          const { reportId, attachmentId } = button.dataset;
+          const attachment = attachmentMap.get(attachmentId);
+
+          if (!attachment) {
+            setAttachmentStatus(reportId, 'Receipt metadata is missing. Refresh and try again.', true);
+            return;
+          }
+
+          const shouldDelete = window.confirm(`Delete ${attachment.file_name}?`);
+
+          if (!shouldDelete) {
+            return;
+          }
+
+          button.disabled = true;
+          setAttachmentStatus(reportId, 'Deleting receipt...');
+
+          try {
+            await deleteExpenseReportAttachment({
+              attachmentId,
+              reportId,
+              storagePath: attachment.storage_path,
+            });
+
+            await renderDashboardPage(container);
+          } catch (error) {
+            setAttachmentStatus(reportId, error?.message ?? 'Could not delete the receipt.', true);
+            button.disabled = false;
+          }
+        });
       });
     }
   } catch (error) {

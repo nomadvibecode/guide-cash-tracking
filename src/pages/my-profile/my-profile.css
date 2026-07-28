@@ -1,0 +1,10 @@
+.profile-picture-img {
+    object-fit: cover;
+}
+
+.bank-detail-card {
+    border-left: 4px solid #0d6efd;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+}

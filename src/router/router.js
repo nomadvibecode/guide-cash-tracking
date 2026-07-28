@@ -6,6 +6,7 @@ import { renderExpenseReportsPage } from '../pages/expense-reports/expense-repor
 import { renderLoginPage } from '../pages/login/login.js';
 import { renderNotFoundPage } from '../pages/not-found/not-found.js';
 import { renderToursPage } from '../pages/tours/tours.js';
+import { renderMyProfilePage } from '../pages/my-profile/my-profile.js';
 
 const routes = [
   {
@@ -32,6 +33,11 @@ const routes = [
     pattern: /^\/expense-reports(?:\/([^/]+))?\/?$/,
     title: 'Expense Reports',
     render: renderExpenseReportsPage,
+  },
+  {
+    pattern: /^\/my-profile\/?$/,
+    title: 'My Profile',
+    render: renderMyProfilePage,
   },
 ];
 
