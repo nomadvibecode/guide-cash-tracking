@@ -357,3 +357,51 @@ export async function deleteExpenseReport(reportId) {
 
   if (error) throw error;
 }
+
+export async function getExpenseReportDetails(reportId) {
+  const client = requireSupabaseClient();
+  const { data, error } = await client
+    .from('expense_reports')
+    .select(`
+      *,
+      tours(*),
+      guide_profiles(*)
+    `)
+    .eq('id', reportId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getExpenseReportLines(reportId) {
+  const client = requireSupabaseClient();
+  const { data, error } = await client
+    .from('expense_report_lines')
+    .select('*')
+    .eq('expense_report_id', reportId);
+
+  if (error) throw error;
+  return data;
+}
+  const client = requireSupabaseClient();
+  const { data, error } = await client
+    .from('expense_report_lines')
+    .update(lineData)
+    .eq('id', lineId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteExpenseReportLine(lineId) {
+  const client = requireSupabaseClient();
+  const { error } = await client
+    .from('expense_report_lines')
+    .delete()
+    .eq('id', lineId);
+
+  if (error) throw error;
+}

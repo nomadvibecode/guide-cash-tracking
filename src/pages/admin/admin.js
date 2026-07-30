@@ -15,6 +15,13 @@ import {
   adminUpdateExpenseReport,
   deleteExpenseReport,
 } from '../../services/expense-reports.js';
+import {
+  getExpenseReportDetails,
+  getExpenseReportLines,
+  addExpenseReportLine,
+  updateExpenseReportLine,
+  deleteExpenseReportLine,
+} from '../../services/expense-reports.js';
 import { checkAdmin } from '../../services/auth.js';
 import { Modal } from 'bootstrap';
 
@@ -85,6 +92,26 @@ export async function renderAdminPage(container) {
   const expenseAmountInput = document.getElementById('expense-amount');
   const expenseCurrencyInput = document.getElementById('expense-currency');
   const addExpenseButton = document.getElementById('add-expense-button');
+
+  // Expense report details modal
+  const expenseReportDetailsModalElement = document.getElementById('expense-report-details-modal');
+  const expenseReportDetailsModal = new Modal(expenseReportDetailsModalElement);
+  const expenseReportDetailsContainer = document.getElementById('expense-report-details-container');
+  const expenseReportLinesList = document.getElementById('expense-report-lines-list');
+  const addExpenseLineButton = document.getElementById('add-expense-line-button');
+
+  // Expense line modal
+  const expenseLineModalElement = document.getElementById('expense-line-modal');
+  const expenseLineModal = new Modal(expenseLineModalElement);
+  const expenseLineForm = document.getElementById('expense-line-form');
+  const expenseLineIdInput = document.getElementById('expense-line-id');
+  const expenseReportIdForLineInput = document.getElementById('expense-report-id-for-line');
+  const expenseLineDateInput = document.getElementById('expense-line-date');
+  const expenseLineMerchantInput = document.getElementById('expense-line-merchant');
+  const expenseLineCategoryInput = document.getElementById('expense-line-category');
+  const expenseLineAmountInput = document.getElementById('expense-line-amount');
+  const expenseLineCurrencyInput = document.getElementById('expense-line-currency');
+  const expenseLineDescriptionInput = document.getElementById('expense-line-description');
 
   let cachedTours = [];
   let cachedProfiles = [];
@@ -370,6 +397,7 @@ export async function renderAdminPage(container) {
             <td>${report.currency || 'N/A'}</td>
             <td>${report.status || 'N/A'}</td>
             <td>
+              <button type="button" class="btn btn-sm btn-outline-info view-expense-details-button" data-expense-id="${report.id}">View Details</button>
               <button type="button" class="btn btn-sm btn-outline-secondary edit-expense-button" data-expense-id="${report.id}">Edit</button>
               <button type="button" class="btn btn-sm btn-outline-danger delete-expense-button" data-expense-id="${report.id}">Delete</button>
             </td>
@@ -469,6 +497,12 @@ export async function renderAdminPage(container) {
   expenseForm?.addEventListener('submit', handleExpenseFormSubmit);
 
   expensesList.addEventListener('click', (event) => {
+    const viewDetailsButton = event.target.closest('.view-expense-details-button');
+    if (viewDetailsButton) {
+      openExpenseReportDetailsModal(viewDetailsButton.dataset.expenseId);
+      return;
+    }
+
     const editButton = event.target.closest('.edit-expense-button');
     if (editButton) {
       openEditExpenseModal(editButton.dataset.expenseId);
@@ -481,6 +515,12 @@ export async function renderAdminPage(container) {
     }
   });
 
+  const viewDetailsButton = event.target.closest('.view-expense-details-button');
+    if (viewDetailsButton) {
+      openExpenseReportDetailsModal(viewDetailsButton.dataset.expenseId);
+      return;
+    }
+
   try {
     cachedCurrencies = await getExpenseReportCurrencies();
   } catch (error) {
@@ -491,4 +531,135 @@ export async function renderAdminPage(container) {
   await loadTours();
   await loadExpenseReports();
 }
+
+async function openExpenseReportDetailsModal(expenseId) {
+  expenseReportDetailsModal.show();
+  expenseReportDetailsContainer.style.display = 'none';
+  document.getElementById('expense-report-details-loading').style.display = 'block';
+
+  try {
+    const report = await getExpenseReportDetails(expenseId);
+    expenseReportDetailsContainer.innerHTML = `
+      <p><strong>Tour:</strong> ${report.tours.tour_name}</p>
+      <p><strong>Guide:</strong> ${report.guide_profiles.display_name}</p>
+      <p><strong>Memo:</strong> ${report.transaction_memo}</p>
+      <p><strong>Status:</strong> ${report.status}</p>
+    `;
+    expenseReportDetailsContainer.style.display = 'block';
+    document.getElementById('expense-report-details-loading').style.display = 'none';
+
+    expenseReportIdForLineInput.value = expenseId;
+    await loadExpenseReportLines(expenseId);
+  } catch (error) {
+    console.error('Error loading expense report details:', error);
+    document.getElementById('expense-report-details-loading').style.display = 'none';
+  }
+}
+
+async function loadExpenseReportLines(reportId) {
+  document.getElementById('expense-report-lines-loading').style.display = 'block';
+  document.getElementById('expense-report-lines-container').style.display = 'none';
+  try {
+    const lines = await getExpenseReportLines(reportId);
+    renderExpenseReportLines(lines);
+    document.getElementById('expense-report-lines-loading').style.display = 'none';
+    document.getElementById('expense-report-lines-container').style.display = 'block';
+  } catch (error) {
+    console.error('Error loading expense report lines:', error);
+    document.getElementById('expense-report-lines-loading').style.display = 'none';
+    document.getElementById('expense-report-lines-error').textContent = `Error loading lines: ${error.message}`;
+    document.getElementById('expense-report-lines-error').classList.remove('d-none');
+  }
+}
+
+function renderExpenseReportLines(lines) {
+  expenseReportLinesList.innerHTML = lines.map(line => `
+    <tr>
+      <td>${line.transaction_date}</td>
+      <td>${line.merchant}</td>
+      <td>${line.category}</td>
+      <td>${line.amount}</td>
+      <td>${line.currency}</td>
+      <td>${line.description}</td>
+      <td>
+        <button class="btn btn-sm btn-secondary edit-expense-line-button" data-line-id="${line.id}">Edit</button>
+        <button class="btn btn-sm btn-danger delete-expense-line-button" data-line-id="${line.id}">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openAddExpenseLineModal() {
+  expenseLineForm.reset();
+  expenseLineIdInput.value = '';
+  expenseLineModal.show();
+}
+
+function openEditExpenseLineModal(lineId) {
+  const reportId = expenseReportIdForLineInput.value;
+  getExpenseReportLines(reportId).then(lines => {
+    const line = lines.find(l => String(l.id) === String(lineId));
+    if (line) {
+      expenseLineIdInput.value = line.id;
+      expenseLineDateInput.value = line.transaction_date;
+      expenseLineMerchantInput.value = line.merchant;
+      expenseLineCategoryInput.value = line.category;
+      expenseLineAmountInput.value = line.amount;
+      expenseLineCurrencyInput.value = line.currency;
+      expenseLineDescriptionInput.value = line.description;
+      expenseLineModal.show();
+    }
+  });
+}
+
+async function handleExpenseLineFormSubmit(event) {
+  event.preventDefault();
+  const lineId = expenseLineIdInput.value;
+  const reportId = expenseReportIdForLineInput.value;
+  const lineData = {
+    expense_report_id: reportId,
+    transaction_date: expenseLineDateInput.value,
+    merchant: expenseLineMerchantInput.value,
+    category: expenseLineCategoryInput.value,
+    amount: parseFloat(expenseLineAmountInput.value),
+    currency: expenseLineCurrencyInput.value,
+    description: expenseLineDescriptionInput.value,
+  };
+
+  try {
+    if (lineId) {
+      await updateExpenseReportLine(lineId, lineData);
+    } else {
+      await addExpenseReportLine(lineData);
+    }
+    expenseLineModal.hide();
+    await loadExpenseReportLines(reportId);
+  } catch (error) {
+    alert(`Error saving expense line: ${error.message}`);
+  }
+}
+
+async function handleDeleteExpenseLine(lineId) {
+  if (!confirm('Are you sure you want to delete this expense line?')) {
+    return;
+  }
+  try {
+    await deleteExpenseReportLine(lineId);
+    const reportId = expenseReportIdForLineInput.value;
+    await loadExpenseReportLines(reportId);
+  } catch (error) {
+    alert(`Error deleting expense line: ${error.message}`);
+  }
+}
+
+addExpenseLineButton.addEventListener('click', openAddExpenseLineModal);
+expenseLineForm.addEventListener('submit', handleExpenseLineFormSubmit);
+expenseReportLinesList.addEventListener('click', (event) => {
+  if (event.target.classList.contains('edit-expense-line-button')) {
+    openEditExpenseLineModal(event.target.dataset.lineId);
+  }
+  if (event.target.classList.contains('delete-expense-line-button')) {
+    handleDeleteExpenseLine(event.target.dataset.lineId);
+  }
+});
 

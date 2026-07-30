@@ -44,7 +44,10 @@
     
     <!-- Guide Profiles Tab -->
     <div class="tab-pane fade" id="profiles" role="tabpanel" aria-labelledby="profiles-tab">
-      <h2 class="mt-3">All Guide Profiles</h2>
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <h2 class="mb-0">All Guide Profiles</h2>
+        <button type="button" class="btn btn-primary" id="add-profile-button">Add Profile</button>
+      </div>
       <div id="profiles-loading" class="spinner-border" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
@@ -251,4 +254,92 @@
       </form>
     </div>
   </div>
+</div>
+
+<!-- Expense Report Details Modal -->
+<div class="modal fade" id="expense-report-details-modal" tabindex="-1" aria-labelledby="expense-report-details-modal-label" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="expense-report-details-modal-label">Expense Report Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="expense-report-details-loading" class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div id="expense-report-details-container" style="display: none;">
+          <!-- Report details will be populated here -->
+        </div>
+        <h3 class="mt-4">Transaction Lines</h3>
+        <div id="expense-report-lines-loading" class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="table-responsive" id="expense-report-lines-container" style="display: none;">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Merchant</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Currency</th>
+                <th>Description</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expense-report-lines-list"></tbody>
+          </table>
+        </div>
+        <div id="expense-report-lines-error" class="alert alert-danger d-none"></div>
+        <button type="button" class="btn btn-primary mt-3" id="add-expense-line-button">Add Line</button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Expense Report Line Modal -->
+<div class="modal fade" id="expense-line-modal" tabindex="-1" aria-labelledby="expense-line-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="expense-line-modal-label">Add/Edit Expense Line</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="expense-line-form">
+                    <input type="hidden" id="expense-line-id">
+                    <input type="hidden" id="expense-report-id-for-line">
+                    <div class="mb-3">
+                        <label for="expense-line-date" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="expense-line-date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expense-line-merchant" class="form-label">Merchant</label>
+                        <input type="text" class="form-control" id="expense-line-merchant">
+                    </div>
+                    <div class="mb-3">
+                        <label for="expense-line-category" class="form-label">Category</label>
+                        <input type="text" class="form-control" id="expense-line-category">
+                    </div>
+                    <div class="mb-3">
+                        <label for="expense-line-amount" class="form-label">Amount</label>
+                        <input type="number" class="form-control" id="expense-line-amount" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expense-line-currency" class="form-label">Currency</label>
+                        <input type="text" class="form-control" id="expense-line-currency" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expense-line-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="expense-line-description"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
